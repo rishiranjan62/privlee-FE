@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import type { Profile } from "../lib/types";
-import ProfileCard from "../components/ProfileCard";
+import DiscoveryRow from "../components/DiscoveryRow";
 
 export default function DiscoverPage() {
   const [feed, setFeed] = useState<Profile[] | null>(null);
-  const [index, setIndex] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [matchToast, setMatchToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,6 +15,11 @@ export default function DiscoverPage() {
       .then(setFeed)
       .catch(() => setError("Could not load profiles right now"));
   }, []);
+
+  function removeFromFeed(userId: string) {
+    setFeed((prev) => (prev ? prev.filter((p) => p.userId !== userId) : prev));
+    setExpandedId((current) => (current === userId ? null : current));
+  }
 
   async function handleLike(userId: string) {
     try {
@@ -26,11 +31,11 @@ export default function DiscoverPage() {
     } catch {
       // move on regardless - a failed like shouldn't block browsing
     }
-    setIndex((i) => i + 1);
+    removeFromFeed(userId);
   }
 
-  function handlePass() {
-    setIndex((i) => i + 1);
+  function handlePass(userId: string) {
+    removeFromFeed(userId);
   }
 
   if (error) {
@@ -41,37 +46,38 @@ export default function DiscoverPage() {
     return <p className="text-center text-text-muted">Loading profiles...</p>;
   }
 
-  const current = feed[index];
-
   return (
-    <div>
+    <div className="mx-auto max-w-xl">
+      <h1 className="mb-1 text-lg font-semibold">Nearby, quietly</h1>
+      <p className="mb-4 text-sm text-text-muted">
+        Tap someone to learn more before you say hello.
+      </p>
+
       {matchToast && (
         <div className="mb-4 rounded-lg border border-accent bg-surface-raised px-4 py-3 text-sm text-accent-soft">
           {matchToast}
         </div>
       )}
-      {current ? (
-        <div className="mx-auto max-w-sm">
-          <ProfileCard profile={current} />
-          <div className="mt-4 flex justify-center gap-4">
-            <button
-              onClick={handlePass}
-              className="rounded-full border border-border px-6 py-2.5 text-text-muted transition hover:border-danger hover:text-danger"
-            >
-              Pass
-            </button>
-            <button
-              onClick={() => handleLike(current.userId)}
-              className="rounded-full bg-accent px-6 py-2.5 font-medium text-ink transition hover:bg-accent-soft"
-            >
-              Like
-            </button>
-          </div>
-        </div>
-      ) : (
+
+      {feed.length === 0 ? (
         <p className="text-center text-text-muted">
           No more profiles nearby right now - check back soon.
         </p>
+      ) : (
+        <ul className="rounded-2xl border border-border bg-surface px-3">
+          {feed.map((profile) => (
+            <DiscoveryRow
+              key={profile.userId}
+              profile={profile}
+              expanded={expandedId === profile.userId}
+              onToggle={() =>
+                setExpandedId((current) => (current === profile.userId ? null : profile.userId))
+              }
+              onLike={() => handleLike(profile.userId)}
+              onPass={() => handlePass(profile.userId)}
+            />
+          ))}
+        </ul>
       )}
     </div>
   );
