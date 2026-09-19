@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink px-4">
       <div className="w-full max-w-sm">
-        <h1 className="mb-1 text-center text-2xl font-semibold text-accent-soft">Confide</h1>
+        <h1 className="mb-1 text-center text-2xl font-semibold text-accent-soft">Privlee</h1>
         <p className="mb-8 text-center text-sm text-text-muted">
           Discreet by design. Welcome back.
         </p>

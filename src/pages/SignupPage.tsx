@@ -64,7 +64,7 @@ export default function SignupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink px-4 py-10">
       <div className="w-full max-w-md">
-        <h1 className="mb-1 text-center text-2xl font-semibold text-accent-soft">Confide</h1>
+        <h1 className="mb-1 text-center text-2xl font-semibold text-accent-soft">Privlee</h1>
         <p className="mb-8 text-center text-sm text-text-muted">
           No real name required. You choose what to reveal, and to whom.
         </p>

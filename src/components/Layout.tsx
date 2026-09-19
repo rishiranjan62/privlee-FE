@@ -17,7 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-ink">
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <span className="font-semibold tracking-tight text-accent-soft">Confide</span>
+          <span className="font-semibold tracking-tight text-accent-soft">Privlee</span>
           <nav className="flex items-center gap-1">
             {navItems.map((item) => (
               <NavLink
