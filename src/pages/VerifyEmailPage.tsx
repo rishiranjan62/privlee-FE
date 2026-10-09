@@ -10,6 +10,7 @@ export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [welcomeBack, setWelcomeBack] = useState(false);
   // React StrictMode runs effects twice in development; the link is single-use, so a second call
   // would turn a success into "already used". One attempt per page load.
   const attempted = useRef(false);
@@ -27,7 +28,9 @@ export default function VerifyEmailPage() {
       .verifyEmail(token)
       .then((res) => {
         login(res.accessToken, res.pseudonym, res.userId);
-        navigate("/discover", { replace: true });
+        // Someone returning gets a moment of recognition before the app; everyone else goes straight in.
+        if (res.welcomeBack) setWelcomeBack(true);
+        else navigate("/discover", { replace: true });
       })
       .catch((e) => setError(e instanceof Error ? e.message : "This link isn't valid."));
   }, [params, login, navigate]);
@@ -46,6 +49,22 @@ export default function VerifyEmailPage() {
             >
               Sign in to get a new one
             </Link>
+          </>
+        ) : welcomeBack ? (
+          <>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-[color:var(--l-gold)]">Good to see you</p>
+            <h1 className="mt-3 font-display text-5xl font-medium leading-tight">
+              Welcome <span className="gold-text italic">back.</span>
+            </h1>
+            <p className="mt-4 text-[color:var(--l-muted)]">
+              Your earlier profile was deleted, so you're starting fresh. Nothing from before has come back.
+            </p>
+            <button
+              onClick={() => navigate("/discover", { replace: true })}
+              className="mt-8 inline-block rounded-full bg-[color:var(--l-ink)] px-8 py-3 font-medium text-[color:var(--l-bg)] transition hover:bg-[color:var(--l-gold)]"
+            >
+              Continue
+            </button>
           </>
         ) : (
           <>

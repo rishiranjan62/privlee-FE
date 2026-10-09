@@ -4,12 +4,14 @@ import { api } from "../lib/api";
 import { tintFor } from "../lib/avatar";
 import { useAuth } from "../context/AuthContext";
 import ChangePasswordDialog from "./ChangePasswordDialog";
+import DeleteAccountDialog from "./DeleteAccountDialog";
 
 export default function ProfileMenu() {
   const { pseudonym, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [hasPassword, setHasPassword] = useState(true);
   const wrapper = useRef<HTMLDivElement>(null);
 
@@ -39,6 +41,18 @@ export default function ProfileMenu() {
       setHasPassword(true);
     }
     setShowPasswordDialog(true);
+  }
+
+  async function openDeleteDialog() {
+    setOpen(false);
+    // Google accounts have no password to ask for, so they confirm by typing the word alone.
+    try {
+      const me = await api.getMyProfile();
+      setHasPassword(me.passwordSet !== false);
+    } catch {
+      setHasPassword(true);
+    }
+    setShowDeleteDialog(true);
   }
 
   const name = pseudonym ?? "?";
@@ -101,6 +115,29 @@ export default function ProfileMenu() {
             >
               Update password
             </button>
+            <Link
+              to="/terms"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+              className="block px-4 py-2.5 text-sm transition hover:bg-white"
+            >
+              Terms of Service
+            </Link>
+            <Link
+              to="/privacy"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+              className="block px-4 py-2.5 text-sm transition hover:bg-white"
+            >
+              Privacy Policy
+            </Link>
+            <button
+              onClick={openDeleteDialog}
+              role="menuitem"
+              className="block w-full px-4 py-2.5 text-left text-sm transition hover:bg-white"
+            >
+              Delete account
+            </button>
             <div className="my-1 h-px bg-line/70" />
             <button
               onClick={() => {
@@ -116,6 +153,10 @@ export default function ProfileMenu() {
           </div>
         )}
       </div>
+
+      {showDeleteDialog && (
+        <DeleteAccountDialog hasPassword={hasPassword} onClose={() => setShowDeleteDialog(false)} />
+      )}
 
       {showPasswordDialog && (
         <ChangePasswordDialog

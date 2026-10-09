@@ -101,3 +101,10 @@ export const GIFT_EMOJI: Record<string, string> = {
   CAKE: "🍰",
   TEDDY: "🧸",
 };
+
+export const genderLabels: Record<string, string> = {
+  MALE: "Male",
+  FEMALE: "Female",
+  NON_BINARY: "Non-binary",
+  OTHER: "Other",
+};

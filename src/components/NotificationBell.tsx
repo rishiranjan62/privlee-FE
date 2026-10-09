@@ -11,6 +11,8 @@ const ICONS: Record<string, string> = {
   GIFT: "🎁",
   PHOTO_ACCESS_REQUESTED: "👁",
   PHOTO_ACCESS_GRANTED: "🔓",
+  ADMIN_NEW_REPORT: "⚑",
+  ADMIN_PHOTOS_UPLOADED: "▣",
 };
 
 function shortAgo(iso: string): string {
@@ -22,7 +24,8 @@ function shortAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export default function NotificationBell() {
+/** `staff` swaps in the admin endpoints and the dark console styling; the behaviour is the same. */
+export default function NotificationBell({ staff = false }: { staff?: boolean }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<AppNotification[] | null>(null);
@@ -30,8 +33,9 @@ export default function NotificationBell() {
   const navigate = useNavigate();
 
   const refresh = useCallback(
-    () => api.getUnreadNotificationCount().then(setUnread).catch(() => setUnread(0)),
-    [],
+    () =>
+      (staff ? api.getAdminUnreadCount() : api.getUnreadNotificationCount()).then(setUnread).catch(() => setUnread(0)),
+    [staff],
   );
 
   useEffect(() => {
@@ -56,8 +60,8 @@ export default function NotificationBell() {
     if (!next) return;
     setItems(null);
     try {
-      setItems(await api.getNotifications());
-      await api.markNotificationsRead();
+      setItems(await (staff ? api.getAdminNotifications() : api.getNotifications()));
+      await (staff ? api.markAdminNotificationsRead() : api.markNotificationsRead());
       setUnread(0);
     } catch {
       setItems([]);
@@ -69,7 +73,11 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white/60 text-muted transition hover:border-gold hover:text-ink"
+        className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition ${
+          staff
+            ? "border-white/25 text-white/80 hover:bg-white/10 hover:text-white"
+            : "border-line bg-white/60 text-muted hover:border-gold hover:text-ink"
+        }`}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4.5 w-4.5">
           <path
@@ -86,7 +94,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-80 overflow-hidden rounded-2xl border border-line bg-card shadow-[0_30px_60px_-24px_rgba(120,80,30,0.5)]">
+        <div className="absolute right-0 top-11 z-50 w-80 text-ink overflow-hidden rounded-2xl border border-line bg-card shadow-[0_30px_60px_-24px_rgba(120,80,30,0.5)]">
           <p className="border-b border-line/70 px-4 py-3 font-display text-lg">Notifications</p>
           {items === null ? (
             <p className="px-4 py-8 text-center text-sm text-muted">Loading...</p>

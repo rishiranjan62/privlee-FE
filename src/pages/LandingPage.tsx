@@ -286,7 +286,15 @@ export default function LandingPage() {
       <footer className="border-t border-[color:var(--l-line)]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-[color:var(--l-muted)] sm:flex-row">
           <Logo />
-          <p>© {new Date().getFullYear()} Privlee. For adults 18+.</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <span>© {new Date().getFullYear()} Privlee. For adults 18+.</span>
+            <Link to="/terms" className="transition hover:text-[color:var(--l-ink)]">
+              Terms
+            </Link>
+            <Link to="/privacy" className="transition hover:text-[color:var(--l-ink)]">
+              Privacy
+            </Link>
+          </p>
         </div>
       </footer>
     </div>

@@ -14,7 +14,11 @@ const navItems = [
   { to: "/messages", label: "Messages" },
 ];
 
-export default function Layout({ children }: { children: ReactNode }) {
+/**
+ * `fill` makes the page exactly one screen tall, so a page that manages its own scrolling (the
+ * conversation view) has a single scrollbar - its own - instead of a second one for the whole page.
+ */
+export default function Layout({ children, fill = false }: { children: ReactNode; fill?: boolean }) {
   // Staff never see the member app. Decided before anything renders, so no member page mounts and
   // fires requests the server would only refuse.
   const [staff, setStaff] = useState<boolean | null>(null);
@@ -23,10 +27,10 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, []);
   if (staff === null) return <div className="min-h-screen bg-canvas" />;
   if (staff) return <Navigate to="/admin" replace />;
-  return <MemberShell>{children}</MemberShell>;
+  return <MemberShell fill={fill}>{children}</MemberShell>;
 }
 
-function MemberShell({ children }: { children: ReactNode }) {
+function MemberShell({ children, fill }: { children: ReactNode; fill: boolean }) {
   const location = useLocation();
   const [pendingLikes, setPendingLikes] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -59,7 +63,11 @@ function MemberShell({ children }: { children: ReactNode }) {
   useStreamEvent(refreshBadges);
 
   return (
-    <div className="relative isolate min-h-screen overflow-x-clip bg-canvas">
+    <div
+      className={`relative isolate bg-canvas ${
+        fill ? "flex h-dvh flex-col overflow-hidden" : "min-h-screen overflow-x-clip"
+      }`}
+    >
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="drift absolute -left-40 -top-48 h-[32rem] w-[32rem] rounded-full bg-[#f1cfa0]/45 blur-3xl" />
         <div
@@ -110,7 +118,11 @@ function MemberShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-5 py-10">{children}</main>
+      <main
+        className={`mx-auto w-full max-w-6xl px-5 ${fill ? "flex min-h-0 flex-1 flex-col py-6" : "py-10"}`}
+      >
+        {children}
+      </main>
       <PanicButton />
     </div>
   );

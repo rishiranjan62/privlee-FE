@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import MiniBarChart from "./MiniBarChart";
+import { genderLabels } from "../lib/labels";
 import type { Metrics } from "../lib/types";
 
 function Tile({ label, value, hint, to, alert }: { label: string; value: number; hint?: string; to?: string; alert?: boolean }) {
@@ -13,7 +14,45 @@ function Tile({ label, value, hint, to, alert }: { label: string; value: number;
       {hint && <p className={`mt-0.5 text-xs ${alert ? "text-danger" : "text-muted"}`}>{hint}</p>}
     </div>
   );
-  return to ? <Link to={to}>{body}</Link> : body;
+  if (!to) return body;
+  // "#..." jumps to a section of this page; anything else is another admin page.
+  return to.startsWith("#") ? <a href={to}>{body}</a> : <Link to={to}>{body}</Link>;
+}
+
+/**
+ * A share-of-members list: one row per group, bar length is the share. Identity is carried by the
+ * row label, not by colour, so every bar is the same hue and the panel reads the same in greyscale
+ * or to a colour-blind admin.
+ */
+function ShareBars({ title, rows, empty }: { title: string; rows: { label: string; members: number }[]; empty: string }) {
+  const total = rows.reduce((n, r) => n + r.members, 0);
+  return (
+    <section className="rounded-lg border border-line bg-white p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">{title}</h3>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">{empty}</p>
+      ) : (
+        <ul className="mt-3 space-y-2.5">
+          {rows.map((r) => {
+            const pct = total === 0 ? 0 : (r.members / total) * 100;
+            return (
+              <li key={r.label}>
+                <div className="flex items-baseline justify-between text-sm">
+                  <span>{r.label}</span>
+                  <span className="tabular-nums">
+                    <strong>{r.members}</strong> <span className="text-muted">· {Math.round(pct)}%</span>
+                  </span>
+                </div>
+                <div className="mt-1 h-2 rounded bg-line/60">
+                  <div className="h-2 rounded bg-gold" style={{ width: `${pct}%` }} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
 }
 
 export default function AdminHome() {
@@ -32,10 +71,15 @@ export default function AdminHome() {
       <p className="mt-1 text-sm text-muted">Counts only. Nothing here shows anyone's messages, photos or identity.</p>
 
       <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Tile label="Members" value={t.users} hint={`${t.newUsers7d} joined this week`} />
-        <Tile label="Active today" value={t.active24h} hint={`${t.active7d} in the last 7 days`} />
-        <Tile label="Matches" value={t.matches} hint={`${t.matches7d} this week`} />
-        <Tile label="Messages" value={t.messages7d} hint="in the last 7 days" />
+        <Tile label="Members" value={t.users} hint={`${t.newUsers7d} joined this week`} to="/admin/users?filter=all" />
+        <Tile
+          label="Active today"
+          value={t.active24h}
+          hint={`${t.active7d} in the last 7 days`}
+          to="/admin/users?filter=active-today"
+        />
+        <Tile label="Matches" value={t.matches} hint={`${t.matches7d} this week`} to="#daily-activity" />
+        <Tile label="Messages" value={t.messages7d} hint="in the last 7 days" to="#daily-activity" />
         <Tile
           label="Open reports"
           value={t.openReports}
@@ -43,12 +87,32 @@ export default function AdminHome() {
           to="/admin/reports"
           alert={t.openReports > 0}
         />
-        <Tile label="Suspended" value={t.suspended} to="/admin/users" />
-        <Tile label="Banned" value={t.banned} to="/admin/users" />
-        <Tile label="Awaiting verification" value={t.unverified} hint="email not yet confirmed" />
+        <Tile label="Suspended" value={t.suspended} to="/admin/users?filter=suspended" />
+        <Tile label="Banned" value={t.banned} to="/admin/users?filter=banned" />
+        <Tile
+          label="Awaiting verification"
+          value={t.unverified}
+          hint="email not yet confirmed"
+          to="/admin/users?filter=unverified"
+        />
+        <Tile
+          label="Deleted accounts"
+          value={t.deleted}
+          hint={t.returned > 0 ? `${t.returned} came back` : "chose to leave"}
+          to="/admin/users?filter=deleted"
+        />
       </div>
 
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted">Daily activity</h2>
+      <div className="mt-6 grid gap-3 md:grid-cols-2">
+        <ShareBars
+          title="Members by gender"
+          rows={m.genders.map((g) => ({ label: genderLabels[g.gender] ?? g.gender, members: g.members }))}
+          empty="No members yet."
+        />
+        <ShareBars title="Members by area" rows={m.areas.map((a) => ({ label: a.label, members: a.members }))} empty="No members yet." />
+      </div>
+
+      <h2 id="daily-activity" className="mt-8 scroll-mt-20 text-sm font-semibold uppercase tracking-wider text-muted">Daily activity</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         {m.series.map((s) => (
           <MiniBarChart key={s.key} series={s} />

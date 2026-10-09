@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from "react";
-import { eventStream, type StreamEvent } from "../lib/stream";
+import { isAdminAccount } from "../lib/adminStatus";
+import { ADMIN_STREAM, eventStream, MEMBER_STREAM, type StreamEvent } from "../lib/stream";
 import { useAuth } from "./AuthContext";
 
 interface StreamState {
@@ -17,8 +18,15 @@ export function StreamProvider({ children }: { children: ReactNode }) {
       eventStream.stop();
       return;
     }
-    eventStream.start();
-    return () => eventStream.stop();
+    // Staff are refused the member channel, so they must not even try it (it would just retry forever).
+    let cancelled = false;
+    isAdminAccount().then((staff) => {
+      if (!cancelled) eventStream.start(staff ? ADMIN_STREAM : MEMBER_STREAM);
+    });
+    return () => {
+      cancelled = true;
+      eventStream.stop();
+    };
   }, [isAuthenticated]);
 
   return (

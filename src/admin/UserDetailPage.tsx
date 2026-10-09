@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { reasonLabel } from "./ReportsPage";
 import { StateBadge } from "./UsersPage";
@@ -13,6 +13,10 @@ const ACTIONS: { value: Exclude<ModerationActionCode, "DISMISS">; label: string;
 
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>();
+  // The list this person was opened from (a card filter or a search), so "back" returns to it
+  // rather than to the unfiltered list.
+  const from = (useLocation().state as { from?: string } | null)?.from;
+  const backTo = from?.startsWith("/admin/users") ? from : "/admin/users";
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [photos, setPhotos] = useState<AdminPhoto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +36,15 @@ export default function UserDetailPage() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    if (id) api.getAdminUser(id).then(setUser).catch(() => setError("Could not load this user"));
+    if (id)
+      api
+        .getAdminUser(id)
+        .then((u) => {
+          setUser(u);
+          // The only action that means anything for someone who has already left.
+          if (u.accountState === "DELETED") setAction("BAN");
+        })
+        .catch(() => setError("Could not load this user"));
   }, [id]);
   useEffect(load, [load]);
 
@@ -112,13 +124,20 @@ export default function UserDetailPage() {
 
   return (
     <div>
-      <Link to="/admin/users" className="text-sm text-muted hover:text-ink">← Users</Link>
+      <Link to={backTo} className="text-sm text-muted hover:text-ink">← Users</Link>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold">{user.pseudonym}</h1>
         <StateBadge state={user.accountState} />
         {isAdmin && <span className="rounded bg-gold px-1.5 py-0.5 text-[10px] font-semibold text-white">ADMIN</span>}
       </div>
-      {user.accountState !== "ACTIVE" && user.moderationMessage && (
+      {user.accountState === "DELETED" && (
+        <p className="mt-2 text-sm text-muted">
+          This member deleted their account{user.deletedAt ? ` on ${new Date(user.deletedAt).toLocaleDateString()}` : ""}.
+          Their profile, photos and conversations are gone; their email and any reports remain. If they sign up
+          again with this email they will be recognised, not treated as new.
+        </p>
+      )}
+      {user.accountState !== "ACTIVE" && user.accountState !== "DELETED" && user.moderationMessage && (
         <p className="mt-2 text-sm text-danger">
           {user.accountState === "SUSPENDED" && user.suspendedUntil
             ? `Suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}. `
@@ -221,7 +240,7 @@ export default function UserDetailPage() {
 
       {!isAdmin && (
         <section className="mt-4 rounded-lg border border-line bg-white p-4">
-          {user.accountState !== "ACTIVE" ? (
+          {user.accountState !== "ACTIVE" && user.accountState !== "DELETED" ? (
             <>
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Reinstate</h2>
               <input value={reinstateReason} onChange={(e) => setReinstateReason(e.target.value)}
@@ -236,7 +255,8 @@ export default function UserDetailPage() {
             <>
               <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Act on this account</h2>
               <div className="mt-3 flex gap-2">
-                {ACTIONS.map((a) => (
+                {/* Warning or suspending someone who is not here means nothing; banning stops the address returning. */}
+                {(user.accountState === "DELETED" ? ACTIONS.filter((a) => a.value === "BAN") : ACTIONS).map((a) => (
                   <button key={a.value} onClick={() => setAction(a.value)}
                     className={`rounded px-4 py-1.5 text-sm transition ${
                       action === a.value ? (a.value === "BAN" ? "bg-danger text-white" : "bg-ink text-canvas") : "border border-line hover:border-gold"

@@ -51,6 +51,10 @@ export default function SignupPage() {
     (location.state as { googleIdToken?: string } | null)?.googleIdToken ??
       null,
   );
+  // Set only after Google has proved the address, so greeting them reveals nothing to anyone else.
+  const [welcomeBack, setWelcomeBack] = useState(
+    (location.state as { welcomeBack?: boolean } | null)?.welcomeBack ?? false,
+  );
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -118,6 +122,7 @@ export default function SignupPage() {
       const res = await api.googleLogin(idToken);
       if (res.profileRequired) {
         setGoogleIdToken(idToken);
+        setWelcomeBack(res.welcomeBack ?? false);
       } else if (res.auth) {
         login(res.auth.accessToken, res.auth.pseudonym, res.auth.userId);
         navigate("/discover");
@@ -129,9 +134,11 @@ export default function SignupPage() {
 
   const stepMeta = [
     {
-      title: "Choose how you appear",
+      title: welcomeBack && googleIdToken ? "Welcome back" : "Choose how you appear",
       sub: googleIdToken
-        ? "Google confirmed your email. Now pick a pseudonym. Your Google name is never used."
+        ? welcomeBack
+          ? "Google confirmed your email. Your earlier profile was deleted, so set up a fresh one - pick a pseudonym to begin."
+          : "Google confirmed your email. Now pick a pseudonym. Your Google name is never used."
         : "A pseudonym is all anyone ever sees.",
     },
     {
@@ -385,6 +392,21 @@ export default function SignupPage() {
             <PrimaryFill />
           </button>
         </div>
+
+        {/* The account is created on this step's button, so the agreement sits right under it. */}
+        {step === 2 && (
+          <p className="mt-4 text-center text-xs leading-relaxed text-[color:var(--l-muted)]">
+            By creating your profile you confirm you are 18 or over and agree to our{" "}
+            <Link to="/terms" target="_blank" className="font-medium text-[color:var(--l-gold)] hover:underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link to="/privacy" target="_blank" className="font-medium text-[color:var(--l-gold)] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        )}
 
         {step === 3 && (
           <button

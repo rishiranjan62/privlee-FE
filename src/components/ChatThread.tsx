@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
+import { revealScrollbar } from "../lib/scroll";
 import { useStreamEvent } from "../context/StreamContext";
 import { useAuth } from "../context/AuthContext";
 import ChatComposer from "./ChatComposer";
@@ -78,7 +79,7 @@ export default function ChatThread({ matchId, onActivity }: Props) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-3 overflow-y-auto px-1 pb-4">
+      <div onScroll={revealScrollbar} className="thin-scroll flex-1 space-y-3 overflow-y-auto px-1 pb-4">
         {messages.length === 0 && (
           <p className="py-16 text-center font-display text-2xl text-muted">Say something first.</p>
         )}

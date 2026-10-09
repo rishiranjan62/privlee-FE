@@ -11,6 +11,10 @@ type Listener = (event: StreamEvent) => void;
 
 const RECONNECT_MS = 3000;
 
+/** Staff and members have separate push channels; the member one refuses admins outright. */
+export const MEMBER_STREAM = "/api/notifications/stream";
+export const ADMIN_STREAM = "/api/admin/notifications/stream";
+
 /**
  * Server-sent events, consumed with fetch rather than EventSource.
  *
@@ -30,14 +34,17 @@ class EventStream {
   private retry: ReturnType<typeof setTimeout> | null = null;
   private generation = 0;
   private live = false;
+  private url = MEMBER_STREAM;
 
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  start() {
-    if (this.live) return;
+  start(url: string = MEMBER_STREAM) {
+    if (this.live && this.url === url) return;
+    if (this.live) this.stop();
+    this.url = url;
     this.live = true;
     this.connect(++this.generation);
   }
@@ -77,7 +84,7 @@ class EventStream {
     this.controller = controller;
 
     try {
-      const response = await fetch("/api/notifications/stream", {
+      const response = await fetch(this.url, {
         headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
         signal: controller.signal,
       });

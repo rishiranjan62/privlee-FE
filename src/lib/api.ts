@@ -14,8 +14,15 @@ import type {
   ReportSummary,
   Admirer,
   AuditEntry,
+  Analytics,
+  AuditFacets,
+  Gender,
+  Traffic,
+  Granularity,
+  AuditQuery,
   BlockedUser,
   AppNotification,
+  NotificationType,
   Conversation,
   GiftOption,
   MatchSummary,
@@ -226,6 +233,26 @@ export const api = {
     return data;
   },
 
+  /** Permanently deletes the signed-in member's account. `password` is null for Google accounts. */
+  async deleteAccount(password: string | null, confirm: string): Promise<void> {
+    try {
+      await client.post("/account/delete", { password, confirm });
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not delete your account"));
+    }
+  },
+
+  async reportUsage(seconds: number): Promise<void> {
+    await client.post("/presence/usage", { seconds });
+  },
+
+  async getTraffic(granularity: Granularity, from?: string, to?: string): Promise<Traffic> {
+    const { data } = await client.get<Traffic>("/admin/analytics/traffic", {
+      params: { granularity, ...(from ? { from } : {}), ...(to ? { to } : {}) },
+    });
+    return data;
+  },
+
   async heartbeat(): Promise<void> {
     await client.post("/presence/heartbeat");
   },
@@ -254,6 +281,23 @@ export const api = {
     await client.post("/notifications/read");
   },
 
+  // --- staff notifications (the member endpoints above refuse admins) ---
+
+  async getAdminNotifications(): Promise<AppNotification[]> {
+    const { data } = await client.get<AppNotification[]>("/admin/notifications");
+    return data;
+  },
+
+  async getAdminUnreadCount(): Promise<number> {
+    const { data } = await client.get<{ unread: number }>("/admin/notifications/unread");
+    return data.unread;
+  },
+
+  /** With a type, only that kind is cleared (e.g. photo prompts once the photos page is opened). */
+  async markAdminNotificationsRead(type?: NotificationType): Promise<void> {
+    await client.post("/admin/notifications/read", null, { params: type ? { type } : {} });
+  },
+
   async getSentLikes(): Promise<Profile[]> {
     const { data } = await client.get<Profile[]>("/likes/sent");
     return data;
@@ -277,8 +321,22 @@ export const api = {
     return data;
   },
 
-  async getAuditLog(page = 0, size = 50): Promise<AuditEntry[]> {
-    const { data } = await client.get<AuditEntry[]>("/admin/audit", { params: { page, size } });
+  async getAuditLog(query: AuditQuery = {}, page = 0, size = 50): Promise<AuditEntry[]> {
+    // Empty filters are dropped so they are never sent as blank values.
+    const filters = Object.fromEntries(Object.entries(query).filter(([, v]) => v));
+    const { data } = await client.get<AuditEntry[]>("/admin/audit", { params: { ...filters, page, size } });
+    return data;
+  },
+
+  async getAnalytics(granularity: Granularity, from?: string, to?: string, gender?: Gender, city?: string): Promise<Analytics> {
+    const { data } = await client.get<Analytics>("/admin/analytics", {
+      params: { granularity, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(gender ? { gender } : {}), ...(city ? { city } : {}) },
+    });
+    return data;
+  },
+
+  async getAuditFacets(): Promise<AuditFacets> {
+    const { data } = await client.get<AuditFacets>("/admin/audit/facets");
     return data;
   },
 
@@ -315,6 +373,11 @@ export const api = {
 
   async searchUsers(q: string): Promise<AdminUserSummary[]> {
     const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params: { q } });
+    return data;
+  },
+
+  async listUsers(filter: string): Promise<AdminUserSummary[]> {
+    const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params: { filter } });
     return data;
   },
 

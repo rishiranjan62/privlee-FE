@@ -78,7 +78,16 @@ export default function AuthShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">{children}</div>
-        <p className="text-center text-xs text-[color:var(--l-muted)]">Adults 18+ only · Your details are never shown.</p>
+        <p className="text-center text-xs text-[color:var(--l-muted)]">
+          Adults 18+ only · Your details are never shown ·{" "}
+          <Link to="/terms" className="underline-offset-2 hover:underline">
+            Terms
+          </Link>{" "}
+          ·{" "}
+          <Link to="/privacy" className="underline-offset-2 hover:underline">
+            Privacy
+          </Link>
+        </p>
       </main>
       <Showcase />
     </div>

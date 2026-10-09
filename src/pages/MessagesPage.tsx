@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { revealScrollbar } from "../lib/scroll";
 import { useStreamEvent } from "../context/StreamContext";
 import { tintFor } from "../lib/avatar";
 import ChatThread from "../components/ChatThread";
@@ -42,8 +43,8 @@ export default function MessagesPage() {
   const active = conversations?.find((c) => c.matchId === matchId);
 
   return (
-    <div>
-      <header className="rise mb-6">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="rise mb-5 shrink-0">
         <p className="text-xs font-medium uppercase tracking-[0.3em] text-gold">Messages</p>
         <h1 className="mt-2 font-display text-4xl font-medium leading-tight">
           Quiet <span className="gold-text italic">conversations.</span>
@@ -64,10 +65,10 @@ export default function MessagesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-[19rem_1fr]">
+        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-5 md:grid-cols-[19rem_1fr]">
           {/* On a phone only one pane shows at a time: the list, or the open thread. */}
-          <aside className={`${matchId ? "hidden md:block" : "block"}`}>
-            <ul className="max-h-[calc(100vh-15rem)] overflow-y-auto rounded-3xl border border-line bg-card shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]">
+          <aside className={`${matchId ? "hidden md:block" : "block"} min-h-0`}>
+            <ul onScroll={revealScrollbar} className="thin-scroll max-h-full overflow-y-auto rounded-3xl border border-line bg-card shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]">
               {conversations === null ? (
                 <li className="px-4 py-8 text-center text-sm text-muted">Loading...</li>
               ) : (
@@ -135,11 +136,11 @@ export default function MessagesPage() {
           </aside>
 
           <section
-            className={`${matchId ? "block" : "hidden md:block"} h-[calc(100vh-15rem)] rounded-3xl border border-line bg-card p-5 shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]`}
+            className={`${matchId ? "flex" : "hidden md:flex"} min-h-0 flex-col rounded-3xl border border-line bg-card p-5 shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]`}
           >
             {matchId ? (
               <>
-                <div className="mb-3 flex items-center gap-3 border-b border-line/70 pb-3">
+                <div className="mb-3 flex shrink-0 items-center gap-3 border-b border-line/70 pb-3">
                   <button
                     onClick={() => navigate("/messages")}
                     className="text-sm text-muted transition hover:text-ink md:hidden"
@@ -161,7 +162,7 @@ export default function MessagesPage() {
                     Messages stay between the two of you.
                   </span>
                 </div>
-                <div className="h-[calc(100%-3.5rem)]">
+                <div className="min-h-0 flex-1">
                   <ChatThread matchId={matchId} onActivity={load} />
                 </div>
               </>

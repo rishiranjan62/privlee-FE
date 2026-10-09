@@ -17,6 +17,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const expired = params.get("expired") === "1";
+  const deleted = params.get("deleted") === "1";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -40,7 +41,7 @@ export default function LoginPage() {
     try {
       const res = await api.googleLogin(idToken);
       if (res.profileRequired) {
-        navigate("/signup", { state: { googleIdToken: idToken } });
+        navigate("/signup", { state: { googleIdToken: idToken, welcomeBack: res.welcomeBack } });
       } else if (res.auth) {
         login(res.auth.accessToken, res.auth.pseudonym, res.auth.userId);
         navigate("/discover");
@@ -58,9 +59,11 @@ export default function LoginPage() {
           Step back <span className="gold-text italic">inside.</span>
         </h1>
         <p className="mt-3 text-[color:var(--l-muted)]">
-          {expired
-            ? "Your session timed out for safety. Sign in to carry on."
-            : "Discreet by design. Sign in to pick up where you left off."}
+          {deleted
+            ? "Your account has been deleted. Thank you for having been here - you're welcome back any time."
+            : expired
+              ? "Your session timed out for safety. Sign in to carry on."
+              : "Discreet by design. Sign in to pick up where you left off."}
         </p>
       </div>
 

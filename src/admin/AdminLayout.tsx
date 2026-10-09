@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import ChangePasswordDialog from "../components/ChangePasswordDialog";
+import NotificationBell from "../components/NotificationBell";
+import AdminProfileMenu from "./AdminProfileMenu";
 import { useLocation } from "react-router-dom";
 import { api } from "../lib/api";
+import { useStreamEvent } from "../context/StreamContext";
 import { NavLink } from "react-router-dom";
 import type { AdminMe } from "../lib/types";
 
@@ -12,6 +12,7 @@ const links = [
   { to: "/admin/reports", label: "Reports", end: false },
   { to: "/admin/users", label: "Users", end: false },
   { to: "/admin/photos", label: "Recent photos", end: false },
+  { to: "/admin/analytics", label: "Analytics", end: false },
   { to: "/admin/audit", label: "Audit log", end: false },
 ];
 
@@ -22,14 +23,23 @@ const links = [
  */
 export default function AdminLayout({ me, children }: { me: AdminMe; children: ReactNode }) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { logout } = useAuth();
-  const [changingPassword, setChangingPassword] = useState(false);
   const [counts, setCounts] = useState({ open: 0, priority: 0 });
 
-  // Refreshed per page, not pushed: the queue is worked through deliberately, not watched live.
+  const refreshCounts = () => api.getReportCounts().then(setCounts).catch(() => {});
+
+  // On every page change, and the moment the server says a new report has come in.
   useEffect(() => {
-    api.getReportCounts().then(setCounts).catch(() => {});
+    refreshCounts();
+  }, [location.pathname]);
+  useStreamEvent((event) => {
+    if (event.type === "ADMIN_NEW_REPORT") refreshCounts();
+  });
+
+  // The photo prompt is "go and look"; once the page is open it has done its job.
+  useEffect(() => {
+    if (location.pathname.startsWith("/admin/photos")) {
+      api.markAdminNotificationsRead("ADMIN_PHOTOS_UPLOADED").catch(() => {});
+    }
   }, [location.pathname]);
 
   return (
@@ -63,29 +73,12 @@ export default function AdminLayout({ me, children }: { me: AdminMe; children: R
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <span className="hidden text-white/60 sm:block">{me.email}</span>
-            <button
-              onClick={() => setChangingPassword(true)}
-              className="rounded border border-white/25 px-3 py-1.5 transition hover:bg-white/10"
-            >
-              Password
-            </button>
-            <button
-              onClick={() => {
-                logout();
-                navigate("/login");
-              }}
-              className="rounded border border-white/25 px-3 py-1.5 transition hover:bg-white/10"
-            >
-              Log out
-            </button>
+            <NotificationBell staff />
+            <AdminProfileMenu me={me} />
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
-      {changingPassword && (
-        <ChangePasswordDialog hasExistingPassword onClose={() => setChangingPassword(false)} />
-      )}
     </div>
   );
 }

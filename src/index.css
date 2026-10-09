@@ -122,3 +122,32 @@ body {
   background: var(--l-bg);
   color: var(--l-ink);
 }
+
+/* Scroll areas inside cards: no bar at rest. It appears while the content is being scrolled
+   (lib/scroll.ts sets data-scrolling) or when the pointer is on the bar itself, then fades away. */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+.thin-scroll[data-scrolling="true"],
+.thin-scroll:hover {
+  scrollbar-color: rgb(120 90 50 / 0.3) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+  transition: background 0.3s ease;
+}
+.thin-scroll[data-scrolling="true"]::-webkit-scrollbar-thumb {
+  background: rgb(120 90 50 / 0.3);
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(120 90 50 / 0.5);
+}
