@@ -3,6 +3,7 @@ import { Navigate, NavLink, useLocation } from "react-router-dom";
 import { isAdminAccount } from "../lib/adminStatus";
 import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
+import { usePageMeta } from "../lib/seo";
 import PanicButton from "./PanicButton";
 import NotificationBell from "./NotificationBell";
 import ProfileMenu from "./ProfileMenu";
@@ -31,6 +32,8 @@ export default function Layout({ children, fill = false }: { children: ReactNode
 }
 
 function MemberShell({ children, fill }: { children: ReactNode; fill: boolean }) {
+  // Everything behind the sign-in is private: keep it out of search results.
+  usePageMeta({ title: "Privlee", index: false });
   const location = useLocation();
   const [pendingLikes, setPendingLikes] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);

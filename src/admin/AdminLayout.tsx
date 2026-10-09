@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import NotificationBell from "../components/NotificationBell";
 import AdminProfileMenu from "./AdminProfileMenu";
+import { usePageMeta } from "../lib/seo";
 import { useLocation } from "react-router-dom";
 import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
@@ -22,6 +23,7 @@ const links = [
  * get made on live accounts.
  */
 export default function AdminLayout({ me, children }: { me: AdminMe; children: ReactNode }) {
+  usePageMeta({ title: "Privlee Admin", index: false });
   const location = useLocation();
   const [counts, setCounts] = useState({ open: 0, priority: 0 });
 

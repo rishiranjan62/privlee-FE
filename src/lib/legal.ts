@@ -31,7 +31,7 @@ export const terms: LegalDocument = {
     {
       heading: "Who can use Privlee",
       body: [
-        "Privlee is for adults only. You must be at least 18 years old to create an account, and by signing up you confirm that you are.",
+        "Privlee is for adults only. You must be at least 18 years old to create an account, and by signing up you confirm that you are. If we have reason to believe someone is under 18, we will remove their account.",
         [
           "You must give accurate information, including your date of birth.",
           "You may hold one account. Do not create an account for someone else.",
@@ -130,6 +130,7 @@ export const privacy: LegalDocument = {
           "Profile details: your pseudonym, date of birth, gender, city, and the answers and preferences you add.",
           "Photos: the pictures you upload, and a blurred copy we make of each one.",
           "Activity: your likes, matches, messages, gifts, blocks and reports, and the times you were last active.",
+          "Your agreement: the time you agreed to our terms and which version you saw. This includes your confirmation that you are 18 or over.",
           "Use of the app: roughly how many days you were active and how long you spent using the app each day. This is linked to your account and used to understand how the product is used.",
         ],
       ],
@@ -137,7 +138,7 @@ export const privacy: LegalDocument = {
     {
       heading: "What we do not collect",
       body: [
-        "We do not use advertising or tracking cookies. When someone visits our website, we count page views without recording who they are: no IP address, no device identifier and no cookie is stored for this. If you choose to sign in with Google, Google\u2019s own sign-in button may set its own cookies, under Google\u2019s privacy policy. We do not sell your information, and we do not share it with advertisers.",
+        "We do not use advertising or tracking cookies. When someone visits our website, we count page views without recording who they are: no IP address, no device identifier and no cookie is stored for this. If you choose to sign in with Google, Google\u2019s own sign-in button may set its own cookies, under Google\u2019s privacy policy. The only cookie we set ourselves is a small one that remembers a failed age check for seven days, so that the same browser cannot immediately try again with a different date of birth. It holds nothing about you. We do not sell your information, and we do not share it with advertisers.",
       ],
     },
     {
@@ -209,7 +210,8 @@ export const privacy: LegalDocument = {
     {
       heading: "Adults only",
       body: [
-        "Privlee is not for anyone under 18. If we learn that someone under 18 has an account, we will close it.",
+        "Privlee is not for anyone under 18. We ask for your date of birth, and nobody under 18 can join. If you are turned away for being under 18, we do not keep the date you entered.",
+        "If we learn that someone under 18 has an account, we erase their profile, photos, matches and messages straight away and close the account. We keep only the email address, so that the same account cannot simply be created again.",
       ],
     },
     {

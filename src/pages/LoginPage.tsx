@@ -1,12 +1,20 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { pageMeta } from "../lib/pageMeta";
+import { usePageMeta } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import PasswordInput from "../components/PasswordInput";
 import GoogleButton, { Divider } from "../components/GoogleButton";
 import AuthShell, { inputClass, labelClass, primaryBtn, PrimaryFill } from "../components/AuthShell";
 
 export default function LoginPage() {
+  usePageMeta({
+    ...pageMeta.login,
+    index: true,
+    // Always the plain address: /login?expired=1 and /login?deleted=1 are the same page.
+    path: "/login",
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

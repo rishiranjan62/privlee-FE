@@ -5,13 +5,14 @@
  * last visit*, only so the very first view of each day can be flagged as a new visitor - there is no
  * visitor id, no cookie, and nothing that could link two visits together on the server.
  */
-export type TrackedPage = "landing" | "login" | "signup" | "verify" | "app";
+export type TrackedPage = "landing" | "login" | "signup" | "verify" | "content" | "app";
 
 const LAST_VISIT_KEY = "pv_last_day";
 
 function pageFor(pathname: string): TrackedPage | null {
   if (pathname.startsWith("/admin")) return null; // staff are not traffic
-  if (pathname === "/terms" || pathname === "/privacy") return null; // reading the rules is not "using the app"
+  // Terms, Privacy, the FAQ and the guides: website traffic, but not the landing page.
+  if (["/terms", "/privacy", "/faq"].includes(pathname) || pathname.startsWith("/guides")) return "content";
   if (pathname === "/") return "landing";
   if (pathname.startsWith("/login")) return "login";
   if (pathname.startsWith("/signup")) return "signup";

@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { usePageMeta } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 
 /** Where the link in the verification email lands. Signs the person in on success. */
 export default function VerifyEmailPage() {
+  // The address carries a one-time sign-in token, so this page must never be listed or cached.
+  usePageMeta({ title: "Confirming your email - Privlee", index: false });
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuth();

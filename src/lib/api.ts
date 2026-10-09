@@ -90,6 +90,18 @@ export const api = {
     }
   },
 
+  /**
+   * Asked as soon as the birth date is typed. A minor gets the server's 400, and the browser is
+   * remembered as turned away, so it cannot just retry with another date.
+   */
+  async checkAge(dateOfBirth: string): Promise<void> {
+    try {
+      await client.post("/auth/age-check", { dateOfBirth });
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't check that date. Please try again."));
+    }
+  },
+
   async login(email: string, password: string): Promise<AuthResponse> {
     try {
       const { data } = await client.post<AuthResponse>("/auth/login", { email, password });
@@ -379,6 +391,15 @@ export const api = {
   async listUsers(filter: string): Promise<AdminUserSummary[]> {
     const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params: { filter } });
     return data;
+  },
+
+  /** Erases a suspected minor's data and bans the account. Irreversible. */
+  async removeMinor(userId: string, reason: string): Promise<void> {
+    try {
+      await client.post(`/admin/users/${userId}/remove-minor`, { reason });
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not remove this account"));
+    }
   },
 
   async getAdminUser(id: string): Promise<AdminUserDetail> {

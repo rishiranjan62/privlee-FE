@@ -94,6 +94,10 @@ export interface SignupPayload extends Partial<ProfileExtras> {
   lookingFor: LookingFor;
   relationshipStatus: RelationshipStatus;
   city: string;
+  /** They ticked "I am 18 or over and agree to the Terms and Privacy Policy". */
+  acceptedTerms: boolean;
+  /** Which version of the terms they were shown (its last-updated date). */
+  termsVersion: string;
 }
 
 /** Email signups return no token: the address has to be verified before anyone can sign in. */

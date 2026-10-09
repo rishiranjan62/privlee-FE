@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { Reveal, RotatingWord, SpotCard, useScrollProgress } from "../components/landing";
+import { pageMeta } from "../lib/pageMeta";
+import { usePageMeta } from "../lib/seo";
 
 const marquee = [
   "Pseudonym only",
@@ -50,6 +52,11 @@ function ProfileCard({ p }: { p: (typeof profiles)[number] }) {
 }
 
 export default function LandingPage() {
+  usePageMeta({
+    ...pageMeta.landing,
+    index: true,
+    path: "/",
+  });
   const { progress, scrolled } = useScrollProgress();
 
   return (
@@ -226,7 +233,7 @@ export default function LandingPage() {
             <SpotCard className="h-full rounded-3xl bg-[color:var(--l-ink)] p-8 text-[color:var(--l-bg)] shadow-[0_30px_60px_-30px_rgba(29,26,22,0.6)]">
               <h3 className="font-display text-3xl font-medium">A panic button, always in reach</h3>
               <p className="mt-3 max-w-md leading-relaxed text-[#cfc6b6]">
-                One tap turns Privlee into an ordinary notes screen. Tap the title five times to return.
+                One tap turns Privlee into an ordinary notes screen. Only you know the way back.
               </p>
               <div className="mt-8 flex items-center gap-4">
                 <div className="relative flex h-12 w-12 items-center justify-center">

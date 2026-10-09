@@ -27,6 +27,8 @@ export default function UserDetailPage() {
   const [rmMessage, setRmMessage] = useState("");
 
   // sanction
+  const [minorReason, setMinorReason] = useState("");
+  const [confirmingMinor, setConfirmingMinor] = useState(false);
   const [action, setAction] = useState<Exclude<ModerationActionCode, "DISMISS">>("WARN");
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
@@ -115,6 +117,21 @@ export default function UserDetailPage() {
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not reinstate");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeMinor() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.removeMinor(user!.userId, minorReason.trim());
+      setConfirmingMinor(false);
+      setMinorReason("");
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not remove this account");
     } finally {
       setBusy(false);
     }
@@ -237,6 +254,49 @@ export default function UserDetailPage() {
           <p className="mt-3 text-xs text-muted">Removing hides a photo from everyone but keeps the file, in case it has to be preserved or reported.</p>
         )}
       </section>
+
+      {/* Only while there is still something to erase: their profile (and so their age) is still there. */}
+      {!isAdmin && user.age !== null && (
+        <section className="mt-4 rounded-lg border border-danger/40 bg-white p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-danger">Suspected minor</h2>
+          <p className="mt-2 text-sm text-muted">
+            If you believe this member is under 18, remove them. Their profile, photos, matches and conversations
+            are <strong>erased immediately</strong> and the account is banned. Only the email is kept, so it cannot
+            be used to rejoin. This cannot be undone.
+          </p>
+          <input
+            value={minorReason}
+            onChange={(e) => {
+              setMinorReason(e.target.value);
+              setConfirmingMinor(false);
+            }}
+            placeholder="Why you believe this (recorded in the audit log)"
+            className="mt-3 w-full rounded border border-line px-3 py-2 text-sm"
+          />
+          {!confirmingMinor ? (
+            <button
+              onClick={() => setConfirmingMinor(true)}
+              disabled={busy || minorReason.trim().length < 5}
+              className="mt-2 rounded border border-danger px-4 py-1.5 text-sm text-danger transition hover:bg-danger hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-danger"
+            >
+              Remove as under 18...
+            </button>
+          ) : (
+            <div className="mt-2 flex items-center gap-3">
+              <button
+                onClick={removeMinor}
+                disabled={busy}
+                className="rounded bg-danger px-4 py-1.5 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+              >
+                {busy ? "Removing..." : "Yes, erase and ban"}
+              </button>
+              <button onClick={() => setConfirmingMinor(false)} className="text-sm text-muted hover:text-ink">
+                Cancel
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {!isAdmin && (
         <section className="mt-4 rounded-lg border border-line bg-white p-4">

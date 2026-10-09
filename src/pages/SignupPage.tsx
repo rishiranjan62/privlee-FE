@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import { terms } from "../lib/legal";
+import { pageMeta } from "../lib/pageMeta";
+import { usePageMeta } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import PasswordInput from "../components/PasswordInput";
 import GoogleButton, { Divider } from "../components/GoogleButton";
@@ -30,7 +33,19 @@ const relationshipOptions: { value: RelationshipStatus; label: string }[] = [
   { value: "SINGLE", label: "Single" },
 ];
 
+/** The most recent birth date that is still 18 or over, as YYYY-MM-DD for a date field's `max`. */
+function latestAdultBirthDate(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 18);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function SignupPage() {
+  usePageMeta({
+    ...pageMeta.signup,
+    index: true,
+    path: "/signup",
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pseudonym, setPseudonym] = useState("");
@@ -52,6 +67,8 @@ export default function SignupPage() {
       null,
   );
   // Set only after Google has proved the address, so greeting them reveals nothing to anyone else.
+  // "I am 18 or over and agree to the Terms and Privacy Policy" - required before the account is made.
+  const [accepted, setAccepted] = useState(false);
   const [welcomeBack, setWelcomeBack] = useState(
     (location.state as { welcomeBack?: boolean } | null)?.welcomeBack ?? false,
   );
@@ -60,6 +77,20 @@ export default function SignupPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (step === 1) {
+      // Told straight away, before the rest of the form is filled in. The server remembers a refusal
+      // for this browser, so another date cannot simply be typed in its place.
+      setError(null);
+      setLoading(true);
+      try {
+        await api.checkAge(dateOfBirth);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
     if (step < 3) {
       setStep(step + 1);
       return;
@@ -83,6 +114,8 @@ export default function SignupPage() {
         lookingFor,
         relationshipStatus,
         city,
+        acceptedTerms: accepted,
+        termsVersion: terms.updated,
       };
       if (!googleIdToken) {
         // The optional answers travel with the account details: there is no token to save them
@@ -285,6 +318,9 @@ export default function SignupPage() {
                   <input
                     type="date"
                     required
+                    // Nobody chooses a date that would make them under 18; the server checks again.
+                    min="1900-01-01"
+                    max={latestAdultBirthDate()}
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
                     className={inputClass}
@@ -381,7 +417,7 @@ export default function SignupPage() {
               Back
             </button>
           )}
-          <button type="submit" disabled={loading} className={primaryBtn}>
+          <button type="submit" disabled={loading || (step === 2 && !accepted)} className={primaryBtn}>
             <span className="relative z-10">
               {step < 2
                 ? "Continue"
@@ -393,19 +429,27 @@ export default function SignupPage() {
           </button>
         </div>
 
-        {/* The account is created on this step's button, so the agreement sits right under it. */}
+        {/* Ticked before the button that creates the account; the server refuses a sign-up without it. */}
         {step === 2 && (
-          <p className="mt-4 text-center text-xs leading-relaxed text-[color:var(--l-muted)]">
-            By creating your profile you confirm you are 18 or over and agree to our{" "}
-            <Link to="/terms" target="_blank" className="font-medium text-[color:var(--l-gold)] hover:underline">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link to="/privacy" target="_blank" className="font-medium text-[color:var(--l-gold)] hover:underline">
-              Privacy Policy
-            </Link>
-            .
-          </p>
+          <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-[color:var(--l-muted)]">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              className="mt-1 h-4 w-4 shrink-0 accent-[color:var(--l-gold)]"
+            />
+            <span>
+              I am 18 or over, and I agree to the{" "}
+              <Link to="/terms" target="_blank" className="font-medium text-[color:var(--l-gold)] hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/privacy" target="_blank" className="font-medium text-[color:var(--l-gold)] hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
         )}
 
         {step === 3 && (
