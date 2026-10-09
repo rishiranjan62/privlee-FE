@@ -8,9 +8,14 @@ const FAKE_NOTES = [
   { title: "Gift ideas", body: "Check sizes before ordering anything else" },
 ];
 
+const TAPS_TO_REVEAL = 3;
+/** Generous on purpose: people use this when they are flustered, not when they are precise. */
+const TAP_WINDOW_MS = 3000;
+
 /**
- * The panic disguise. Five quick taps on the title reveal the real app again -
- * anything more discoverable (a visible button, a menu item) would defeat the point.
+ * The panic disguise. Three taps on the title reveal the real app again - anything more
+ * discoverable (a visible button, a menu item) would defeat the point. The gesture is taught
+ * once by the panic button itself, never here, where a bystander could read it.
  */
 export default function DisguiseScreen() {
   const { reveal } = usePanic();
@@ -19,12 +24,12 @@ export default function DisguiseScreen() {
 
   const handleTitleTap = () => {
     const now = Date.now();
-    if (now - lastTap.current > 1500) {
+    if (now - lastTap.current > TAP_WINDOW_MS) {
       taps.current = 0;
     }
     lastTap.current = now;
     taps.current += 1;
-    if (taps.current >= 5) {
+    if (taps.current >= TAPS_TO_REVEAL) {
       taps.current = 0;
       reveal();
     }

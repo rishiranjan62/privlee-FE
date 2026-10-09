@@ -1,45 +1,73 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
+import ProfileTile from "../components/ProfileTile";
+import { tileGrid } from "../lib/ui";
 import type { MatchSummary } from "../lib/types";
+
+function Header() {
+  return (
+    <header className="rise mb-10">
+      <p className="text-xs font-medium uppercase tracking-[0.3em] text-gold">Matches</p>
+      <h1 className="mt-3 font-display text-5xl font-medium leading-tight">
+        The ones who <span className="gold-text italic">said yes too.</span>
+      </h1>
+    </header>
+  );
+}
 
 export default function MatchesPage() {
   const [matches, setMatches] = useState<MatchSummary[] | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.getMatches().then(setMatches);
   }, []);
 
   if (!matches) {
-    return <p className="text-center text-text-muted">Loading matches...</p>;
+    return (
+      <>
+        <Header />
+        <p className="py-12 text-center text-muted">Loading matches...</p>
+      </>
+    );
   }
 
   if (matches.length === 0) {
     return (
-      <p className="text-center text-text-muted">
-        No matches yet - keep browsing in Discover.
-      </p>
+      <>
+        <Header />
+        <div className="rounded-3xl border border-dashed border-line bg-white/50 px-6 py-16 text-center">
+          <p className="font-display text-2xl">No matches yet.</p>
+          <p className="mt-2 text-sm text-muted">
+            Say hello to a few people in Discover — when they say hello back, they land here.
+          </p>
+          <Link
+            to="/discover"
+            className="group relative mt-8 inline-block overflow-hidden rounded-full bg-ink px-8 py-3 font-medium text-canvas transition hover:-translate-y-0.5"
+          >
+            <span className="relative z-10">Browse Discover</span>
+            <span className="absolute inset-0 -translate-x-full bg-gold transition-transform duration-500 ease-out group-hover:translate-x-0" />
+          </Link>
+        </div>
+      </>
     );
   }
 
   return (
-    <ul className="space-y-2">
-      {matches.map((match) => (
-        <li key={match.matchId}>
-          <Link
-            to={`/chat/${match.matchId}`}
-            className="flex items-center gap-4 rounded-xl border border-border bg-surface p-3 transition hover:border-accent"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-raised text-lg font-semibold text-text-muted">
-              {match.otherUser.pseudonym.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-medium">{match.otherUser.pseudonym}</p>
-              <p className="text-sm text-text-muted">{match.otherUser.city}</p>
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <>
+      <Header />
+      <ul className={tileGrid}>
+        {matches.map((match) => (
+          <ProfileTile
+            key={match.matchId}
+            profile={match.otherUser}
+            to={`/messages/${match.matchId}`}
+            actionLabel="View profile"
+            onAction={() => navigate(`/u/${match.otherUser.userId}`)}
+          />
+        ))}
+      </ul>
+    </>
   );
 }

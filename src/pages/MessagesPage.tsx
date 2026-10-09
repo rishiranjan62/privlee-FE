@@ -1,0 +1,178 @@
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { api } from "../lib/api";
+import { useStreamEvent } from "../context/StreamContext";
+import { tintFor } from "../lib/avatar";
+import ChatThread from "../components/ChatThread";
+import { GIFT_EMOJI, GIFT_LABELS } from "../lib/labels";
+import type { Conversation, Message } from "../lib/types";
+
+function shortAgo(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+function preview(message: Message | null, mine: boolean): string {
+  if (!message) return "You matched. Say something.";
+  const who = mine ? "You" : "They";
+  if (message.type === "WINK") return `${who} sent a wink`;
+  if (message.type === "GIFT" && message.gift) {
+    return `${who} sent ${(GIFT_LABELS[message.gift] ?? "a gift").toLowerCase()}`;
+  }
+  return message.content;
+}
+
+export default function MessagesPage() {
+  const { matchId } = useParams<{ matchId: string }>();
+  const navigate = useNavigate();
+  const [conversations, setConversations] = useState<Conversation[] | null>(null);
+  const myId = localStorage.getItem("dd_user_id");
+
+  const load = useCallback(() => {
+    api.getConversations().then(setConversations).catch(() => setConversations([]));
+  }, []);
+
+  useEffect(load, [load]);
+  useStreamEvent(load);
+
+  const active = conversations?.find((c) => c.matchId === matchId);
+
+  return (
+    <div>
+      <header className="rise mb-6">
+        <p className="text-xs font-medium uppercase tracking-[0.3em] text-gold">Messages</p>
+        <h1 className="mt-2 font-display text-4xl font-medium leading-tight">
+          Quiet <span className="gold-text italic">conversations.</span>
+        </h1>
+      </header>
+
+      {conversations !== null && conversations.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-line bg-white/50 px-6 py-16 text-center">
+          <p className="font-display text-2xl">No conversations yet.</p>
+          <p className="mt-2 text-sm text-muted">
+            Once someone likes you back, your conversation opens here.
+          </p>
+          <Link
+            to="/discover"
+            className="mt-8 inline-block rounded-full bg-ink px-8 py-3 font-medium text-canvas transition hover:-translate-y-0.5 hover:bg-gold"
+          >
+            Browse Discover
+          </Link>
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-[19rem_1fr]">
+          {/* On a phone only one pane shows at a time: the list, or the open thread. */}
+          <aside className={`${matchId ? "hidden md:block" : "block"}`}>
+            <ul className="max-h-[calc(100vh-15rem)] overflow-y-auto rounded-3xl border border-line bg-card shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]">
+              {conversations === null ? (
+                <li className="px-4 py-8 text-center text-sm text-muted">Loading...</li>
+              ) : (
+                conversations.map((c) => {
+                  const photo = c.otherUser.photos.find((p) => p.primary) ?? c.otherUser.photos[0];
+                  const mine = c.lastMessage?.senderId === myId;
+                  const unread = c.unreadCount > 0;
+                  const selected = c.matchId === matchId;
+                  return (
+                    <li key={c.matchId} className="border-b border-line/70 last:border-b-0">
+                      <button
+                        onClick={() => navigate(`/messages/${c.matchId}`)}
+                        className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
+                          selected ? "bg-ink/5" : unread ? "bg-gold/5 hover:bg-white" : "hover:bg-white"
+                        }`}
+                      >
+                        <span
+                          className={`relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br font-display text-base font-medium text-white/90 ${tintFor(
+                            c.otherUser.pseudonym,
+                          )}`}
+                        >
+                          {photo ? (
+                            <img src={photo.url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            c.otherUser.pseudonym.charAt(0).toUpperCase()
+                          )}
+                        </span>
+
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-baseline justify-between gap-2">
+                            <span className="truncate font-display text-lg font-medium">
+                              {c.otherUser.pseudonym}
+                            </span>
+                            {c.lastMessage && (
+                              <span className="shrink-0 text-[11px] text-muted">
+                                {shortAgo(c.lastMessage.createdAt)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-1.5">
+                            {c.lastMessage?.type === "GIFT" && c.lastMessage.gift && (
+                              <span className="text-xs">{GIFT_EMOJI[c.lastMessage.gift]}</span>
+                            )}
+                            <span
+                              className={`truncate text-xs ${
+                                unread ? "font-medium text-ink" : "text-muted"
+                              }`}
+                            >
+                              {preview(c.lastMessage, mine)}
+                            </span>
+                          </span>
+                        </span>
+
+                        {unread && (
+                          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-gold px-1.5 text-[10px] font-semibold text-white">
+                            {c.unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </aside>
+
+          <section
+            className={`${matchId ? "block" : "hidden md:block"} h-[calc(100vh-15rem)] rounded-3xl border border-line bg-card p-5 shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]`}
+          >
+            {matchId ? (
+              <>
+                <div className="mb-3 flex items-center gap-3 border-b border-line/70 pb-3">
+                  <button
+                    onClick={() => navigate("/messages")}
+                    className="text-sm text-muted transition hover:text-ink md:hidden"
+                  >
+                    ←
+                  </button>
+                  {active && (
+                    <>
+                      <Link
+                        to={`/u/${active.otherUser.userId}`}
+                        className="font-display text-xl font-medium hover:underline"
+                      >
+                        {active.otherUser.pseudonym}
+                      </Link>
+                      <span className="text-xs text-muted">{active.otherUser.city}</span>
+                    </>
+                  )}
+                  <span className="ml-auto text-[11px] text-muted">
+                    Messages stay between the two of you.
+                  </span>
+                </div>
+                <div className="h-[calc(100%-3.5rem)]">
+                  <ChatThread matchId={matchId} onActivity={load} />
+                </div>
+              </>
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <p className="font-display text-2xl text-muted">Pick a conversation.</p>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -7,8 +7,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/uploads': 'http://localhost:8080',
+      '/api': process.env.API_URL ?? 'http://localhost:8080',
+      '/uploads': process.env.API_URL ?? 'http://localhost:8080',
     },
   },
 })

@@ -1,24 +1,55 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { useStreamEvent } from "../context/StreamContext";
 import type { Profile } from "../lib/types";
-import DiscoveryRow from "../components/DiscoveryRow";
+import DiscoverySection from "../components/DiscoverySection";
+
+interface Sections {
+  online: Profile[];
+  nearby: Profile[];
+  fresh: Profile[];
+}
+
+const HEARTBEAT_INTERVAL_MS = 60_000;
 
 export default function DiscoverPage() {
-  const [feed, setFeed] = useState<Profile[] | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sections, setSections] = useState<Sections | null>(null);
   const [matchToast, setMatchToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .getFeed()
-      .then(setFeed)
+  const load = useCallback(() => {
+    Promise.all([api.getOnline(), api.getNearby(), api.getNewMembers()])
+      .then(([online, nearby, fresh]) => setSections({ online, nearby, fresh }))
       .catch(() => setError("Could not load profiles right now"));
   }, []);
 
-  function removeFromFeed(userId: string) {
-    setFeed((prev) => (prev ? prev.filter((p) => p.userId !== userId) : prev));
-    setExpandedId((current) => (current === userId ? null : current));
+  useEffect(load, [load]);
+
+  // A granted photo, or a new match, changes what these tiles should show.
+  useStreamEvent((event) => {
+    if (
+      event.type === "PHOTO_ACCESS_GRANTED" ||
+      event.type === "PHOTO_ACCESS_REVOKED" ||
+      event.type === "MATCH"
+    ) {
+      load();
+    }
+  });
+
+  useEffect(() => {
+    api.heartbeat().catch(() => {});
+    const interval = setInterval(() => api.heartbeat().catch(() => {}), HEARTBEAT_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
+  function removeEverywhere(userId: string) {
+    setSections((prev) =>
+      prev && {
+        online: prev.online.filter((p) => p.userId !== userId),
+        nearby: prev.nearby.filter((p) => p.userId !== userId),
+        fresh: prev.fresh.filter((p) => p.userId !== userId),
+      },
+    );
   }
 
   async function handleLike(userId: string) {
@@ -31,54 +62,61 @@ export default function DiscoverPage() {
     } catch {
       // move on regardless - a failed like shouldn't block browsing
     }
-    removeFromFeed(userId);
-  }
-
-  function handlePass(userId: string) {
-    removeFromFeed(userId);
+    removeEverywhere(userId);
   }
 
   if (error) {
-    return <p className="text-center text-text-muted">{error}</p>;
+    return (
+      <p className="rounded-3xl border border-dashed border-line bg-white/50 px-6 py-12 text-center text-muted">
+        {error}
+      </p>
+    );
   }
 
-  if (!feed) {
-    return <p className="text-center text-text-muted">Loading profiles...</p>;
+  if (!sections) {
+    return <p className="py-12 text-center text-muted">Loading profiles...</p>;
   }
 
   return (
-    <div className="mx-auto max-w-xl">
-      <h1 className="mb-1 text-lg font-semibold">Nearby, quietly</h1>
-      <p className="mb-4 text-sm text-text-muted">
-        Tap someone to learn more before you say hello.
-      </p>
+    <div>
+      <header className="rise mb-10">
+        <p className="text-xs font-medium uppercase tracking-[0.3em] text-gold">Discover</p>
+        <h1 className="mt-3 font-display text-5xl font-medium leading-tight">
+          Someone worth <span className="gold-text italic">knowing.</span>
+        </h1>
+      </header>
 
       {matchToast && (
-        <div className="mb-4 rounded-lg border border-accent bg-surface-raised px-4 py-3 text-sm text-accent-soft">
+        <div className="rise mb-8 flex items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 px-5 py-4 text-sm text-ink">
+          <span className="relative flex h-2.5 w-2.5 shrink-0">
+            <span className="absolute inset-0 rounded-full bg-gold [animation:pulse-ring_2s_ease-out_infinite]" />
+            <span className="relative h-2.5 w-2.5 rounded-full bg-gold" />
+          </span>
           {matchToast}
         </div>
       )}
 
-      {feed.length === 0 ? (
-        <p className="text-center text-text-muted">
-          No more profiles nearby right now - check back soon.
-        </p>
-      ) : (
-        <ul className="rounded-2xl border border-border bg-surface px-3">
-          {feed.map((profile) => (
-            <DiscoveryRow
-              key={profile.userId}
-              profile={profile}
-              expanded={expandedId === profile.userId}
-              onToggle={() =>
-                setExpandedId((current) => (current === profile.userId ? null : profile.userId))
-              }
-              onLike={() => handleLike(profile.userId)}
-              onPass={() => handlePass(profile.userId)}
-            />
-          ))}
-        </ul>
-      )}
+      <DiscoverySection
+        title="Online now"
+        subtitle="Active in the last few minutes"
+        profiles={sections.online}
+        emptyLabel="No one's online right now - check back soon."
+        onLike={handleLike}
+      />
+      <DiscoverySection
+        title="Nearby"
+        subtitle="In your city"
+        profiles={sections.nearby}
+        emptyLabel="No one nearby yet."
+        onLike={handleLike}
+      />
+      <DiscoverySection
+        title="New here"
+        subtitle="Recently joined"
+        profiles={sections.fresh}
+        emptyLabel="No new members yet."
+        onLike={handleLike}
+      />
     </div>
   );
 }
