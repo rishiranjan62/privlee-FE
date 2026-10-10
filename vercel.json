@@ -21,7 +21,7 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
     {
-      "source": "/(admin|verify-email|discover|likes|matches|messages|profile|blocked|credits|chat|u)(.*)",
+      "source": "/(admin|verify-email|forgot-password|reset-password|discover|likes|matches|messages|profile|blocked|credits|chat|u)(.*)",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
     }
   ]

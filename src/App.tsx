@@ -12,6 +12,8 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import { FaqPage, GuidePage, GuidesIndexPage, PrivacyPage, TermsPage } from "./pages/ContentPages";
 
 // Only the pages a first-time visitor sees are in the first download. Everything behind the sign-in -
@@ -99,6 +101,8 @@ function AppRoutes() {
             element={isAuthenticated ? <Navigate to="/discover" replace /> : <LoginPage />}
           />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/faq" element={<FaqPage />} />

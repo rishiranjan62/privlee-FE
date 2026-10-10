@@ -24,6 +24,8 @@ const PUBLIC_PATHS = [
 const PRIVATE_PREFIXES = [
   '/admin',
   '/verify-email',
+  '/forgot-password',
+  '/reset-password',
   '/discover',
   '/likes',
   '/matches',
