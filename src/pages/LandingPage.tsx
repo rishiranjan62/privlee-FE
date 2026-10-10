@@ -1,3 +1,4 @@
+import AppDownloadSection from "../components/AppDownload";
 import { Link } from "react-router-dom";
 import { Reveal, RotatingWord, SpotCard, useScrollProgress } from "../components/landing";
 import { pageMeta } from "../lib/pageMeta";
@@ -72,7 +73,7 @@ export default function LandingPage() {
           scrolled ? "border-b border-[color:var(--l-line)] bg-[color:var(--l-bg)]/80 backdrop-blur-xl" : ""
         }`}
       >
-        <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6 sm:h-20">
           <HomeLink />
           <nav className="flex items-center gap-7 text-sm">
             <a href="#privacy" className="hidden text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)] sm:block">
@@ -80,6 +81,9 @@ export default function LandingPage() {
             </a>
             <a href="#how" className="hidden text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)] sm:block">
               How it works
+            </a>
+            <a href="#app" className="hidden text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)] sm:block">
+              App
             </a>
             <Link to="/login" className="text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)]">
               Sign in
@@ -92,6 +96,12 @@ export default function LandingPage() {
             </Link>
           </nav>
         </div>
+        {/* The three section links sit in the header from sm up; on a phone they get a slim row of their own. */}
+        <nav aria-label="Sections" className="flex justify-center gap-7 pb-2 text-xs text-[color:var(--l-muted)] sm:hidden">
+          <a href="#privacy" className="transition hover:text-[color:var(--l-ink)]">Privacy</a>
+          <a href="#how" className="transition hover:text-[color:var(--l-ink)]">How it works</a>
+          <a href="#app" className="transition hover:text-[color:var(--l-ink)]">App</a>
+        </nav>
       </header>
 
       {/* HERO */}
@@ -177,7 +187,7 @@ export default function LandingPage() {
       </div>
 
       {/* PRIVACY BENTO */}
-      <section id="privacy" className="mx-auto max-w-6xl px-6 py-28">
+      <section id="privacy" className="mx-auto max-w-6xl scroll-mt-24 px-6 py-28">
         <Reveal>
           <p className="text-xs font-medium uppercase tracking-[0.3em] text-[color:var(--l-gold)]">Privacy first</p>
           <h2 className="mt-4 max-w-2xl font-display text-5xl font-medium leading-tight sm:text-6xl">
@@ -249,7 +259,7 @@ export default function LandingPage() {
       </section>
 
       {/* HOW */}
-      <section id="how" className="border-t border-[color:var(--l-line)] bg-white/50">
+      <section id="how" className="scroll-mt-24 border-t border-[color:var(--l-line)] bg-white/50">
         <div className="mx-auto max-w-6xl px-6 py-28">
           <Reveal>
             <p className="text-xs font-medium uppercase tracking-[0.3em] text-[color:var(--l-gold)]">How it works</p>
@@ -269,6 +279,9 @@ export default function LandingPage() {
           </ol>
         </div>
       </section>
+
+      {/* APP */}
+      <AppDownloadSection />
 
       {/* CTA */}
       <section className="relative isolate overflow-hidden">

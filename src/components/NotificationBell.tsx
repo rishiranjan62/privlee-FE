@@ -73,7 +73,7 @@ export default function NotificationBell({ staff = false }: { staff?: boolean })
       <button
         onClick={toggle}
         aria-label="Notifications"
-        className={`relative flex h-9 w-9 items-center justify-center rounded-full border transition ${
+        className={`relative flex h-8 w-8 items-center justify-center rounded-full border transition min-[320px]:h-9 min-[320px]:w-9 ${
           staff
             ? "border-white/25 text-white/80 hover:bg-white/10 hover:text-white"
             : "border-line bg-white/60 text-muted hover:border-gold hover:text-ink"
@@ -94,7 +94,7 @@ export default function NotificationBell({ staff = false }: { staff?: boolean })
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-80 text-ink overflow-hidden rounded-2xl border border-line bg-card shadow-[0_30px_60px_-24px_rgba(120,80,30,0.5)]">
+        <div className="fixed inset-x-4 top-[6.75rem] z-50 text-ink overflow-hidden sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 rounded-2xl border border-line bg-card shadow-[0_30px_60px_-24px_rgba(120,80,30,0.5)]">
           <p className="border-b border-line/70 px-4 py-3 font-display text-lg">Notifications</p>
           {items === null ? (
             <p className="px-4 py-8 text-center text-sm text-muted">Loading...</p>

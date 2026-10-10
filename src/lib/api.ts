@@ -1,6 +1,9 @@
 import { API_ORIGIN } from "./apiBase";
 import axios from "axios";
 import type {
+  AndroidRelease,
+  AppReleaseInfo,
+  AppReleasesOverview,
   AuthResponse,
   GoogleLoginResult,
   GoogleSignupPayload,
@@ -94,7 +97,44 @@ function errorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Where the Android beta is downloaded from. Every download goes through the API, which is how it is counted. */
+export const ANDROID_DOWNLOAD_URL = `${API_ORIGIN}/api/app/android/download`;
+
 export const api = {
+  /** Whether there is an Android beta to download, which version, how big, and its checksum. */
+  async getAndroidRelease(): Promise<AndroidRelease> {
+    const { data } = await client.get<AndroidRelease>("/app/android");
+    return data;
+  },
+
+  async getAppReleases(): Promise<AppReleasesOverview> {
+    const { data } = await client.get<AppReleasesOverview>("/admin/app-releases");
+    return data;
+  },
+
+  /** Stores a build. Nobody can download it until it is published. */
+  async uploadAppRelease(versionName: string, notes: string, file: File): Promise<AppReleaseInfo> {
+    const form = new FormData();
+    form.append("versionName", versionName);
+    if (notes.trim()) form.append("notes", notes.trim());
+    form.append("file", file);
+    try {
+      const { data } = await client.post<AppReleaseInfo>("/admin/app-releases", form);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not upload that build"));
+    }
+  },
+
+  async publishAppRelease(id: string): Promise<AppReleaseInfo> {
+    try {
+      const { data } = await client.post<AppReleaseInfo>(`/admin/app-releases/${id}/publish`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not publish that build"));
+    }
+  },
+
   /** Whether joining currently needs an invite code. */
   async getSignupConfig(): Promise<{ inviteRequired: boolean }> {
     try {

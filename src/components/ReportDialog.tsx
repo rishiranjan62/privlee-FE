@@ -1,3 +1,4 @@
+import Portal from "./Portal";
 import { useState } from "react";
 import { api } from "../lib/api";
 import { pillClass } from "../lib/ui";
@@ -44,12 +45,13 @@ export default function ReportDialog({ userId, pseudonym, hasConversation, onClo
   }
 
   return (
+    <Portal>
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/40 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex justify-center overflow-y-auto bg-ink/40 px-4 py-6 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_80px_-30px_rgba(29,26,22,0.5)]"
+        className="my-auto w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_80px_-30px_rgba(29,26,22,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
         {sent ? (
@@ -123,5 +125,6 @@ export default function ReportDialog({ userId, pseudonym, hasConversation, onClo
         )}
       </div>
     </div>
+    </Portal>
   );
 }

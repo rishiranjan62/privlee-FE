@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { privacy, terms, type LegalDocument } from "../lib/legal";
 import { pageMeta } from "../lib/pageMeta";
-import { faq, guides } from "../lib/siteContent";
+import { faq, guideJsonLd, guides } from "../lib/siteContent";
 
 /**
  * Plain-HTML versions of the public pages, written into the production build (see vite.config.ts).
@@ -193,7 +193,7 @@ export function renderShell(path: string): Shell | null {
       };
     default: {
       const guide = guides.find((g) => `/guides/${g.slug}` === path);
-      return guide ? documentShell(guide, guide.description) : null;
+      return guide ? documentShell(guide, guide.description, guideJsonLd(guide)) : null;
     }
   }
 }

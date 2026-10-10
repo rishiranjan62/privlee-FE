@@ -64,7 +64,7 @@ export default function ProfileMenu() {
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
-          className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-2.5 transition ${
+          className={`flex items-center gap-2 rounded-full border py-1 pl-1 pr-1 transition sm:pr-2.5 ${
             open ? "border-gold bg-white" : "border-line bg-white/60 hover:border-gold"
           }`}
         >
@@ -81,7 +81,7 @@ export default function ProfileMenu() {
             fill="none"
             stroke="currentColor"
             strokeWidth="2"
-            className={`h-3 w-3 text-muted transition-transform ${open ? "rotate-180" : ""}`}
+            className={`hidden h-3 w-3 text-muted transition-transform sm:block ${open ? "rotate-180" : ""}`}
           >
             <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

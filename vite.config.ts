@@ -126,13 +126,20 @@ function seoOutput(env: Record<string, string>): Plugin {
               base ? '<meta property="og:image:width" content="1200" />' : '',
               base ? '<meta property="og:image:height" content="630" />' : '',
               base ? `<meta name="twitter:image" content="${base}/brand/og-image.png" />` : '',
+              base ? '<meta property="og:image:alt" content="Privlee - connection, without exposure" />' : '',
+              base ? '<meta name="twitter:image:alt" content="Privlee - connection, without exposure" />' : '',
               ...verification,
               shell.jsonLd ? `<script type="application/ld+json">${JSON.stringify(shell.jsonLd)}</script>` : '',
             ].filter(Boolean)
             // The site-wide "WebSite" description belongs on the home page only; there it also names the address.
             if (path === '/' && base) html = html.replace('"name": "Privlee",', `"name": "Privlee",\n        "url": "${base}/",`)
+            // Who runs the site, with its logo - what a search engine may show beside the result.
+            const organization =
+              path === '/' && base
+                ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: 'Privlee', url: `${base}/`, logo: `${base}/icon-512.png` })}</script>`
+                : ''
             if (path !== '/') html = html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '')
-            html = html.replace('</head>', `    ${extra.join('\n    ')}\n  </head>`)
+            html = html.replace('</head>', `    ${[...extra, organization].filter(Boolean).join('\n    ')}\n  </head>`)
             if (base) html = html.replace('<meta name="twitter:card" content="summary" />', '<meta name="twitter:card" content="summary_large_image" />')
 
             if (path === '/') index.source = html

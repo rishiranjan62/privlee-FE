@@ -70,7 +70,7 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
   return (
     <div
       className={`relative isolate bg-canvas ${
-        fill ? "flex h-dvh flex-col overflow-hidden" : "min-h-screen overflow-x-clip"
+        fill ? "flex h-dvh flex-col overflow-clip" : "min-h-screen overflow-x-clip"
       }`}
     >
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -83,53 +83,84 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
       </div>
 
       <header className="sticky top-0 z-40 border-b border-line/70 bg-canvas/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
-          <NavLink to="/discover" aria-label="Privlee, home" className="flex items-center">
-            <Logo className="h-10" />
-          </NavLink>
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:px-5 sm:py-4">
+          {/* The logo and the member's own controls always share one row: nothing here may be pushed off-screen. */}
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <NavLink to="/discover" aria-label="Privlee, home" className="flex shrink-0 items-center">
+              <Logo className="h-7 min-[320px]:h-8 sm:h-10" />
+            </NavLink>
 
-          <nav className="flex items-center gap-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `inline-flex items-center rounded-full px-4 py-1.5 text-sm transition ${
-                    isActive
-                      ? "bg-ink text-canvas"
-                      : "text-muted hover:bg-white/70 hover:text-ink"
-                  }`
-                }
-              >
-                {item.label}
-                {item.to === "/likes" && pendingLikes > 0 && (
-                  <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1.5 text-[11px] font-semibold text-white">
-                    {pendingLikes}
-                  </span>
-                )}
-                {item.to === "/messages" && unreadMessages > 0 && (
-                  <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1.5 text-[11px] font-semibold text-white">
-                    {unreadMessages}
-                  </span>
-                )}
-              </NavLink>
-            ))}
-          </nav>
+            {/* On a wide screen the sections sit between the logo and the controls. */}
+            <nav className="hidden items-center gap-1 md:flex" aria-label="Sections">
+              <SectionLinks pendingLikes={pendingLikes} unreadMessages={unreadMessages} />
+            </nav>
 
-          <div className="flex items-center gap-2">
-            <WalletChip />
-            <NotificationBell />
-            <ProfileMenu />
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <WalletChip />
+              <NotificationBell />
+              <ProfileMenu />
+            </div>
           </div>
+
+          {/* On a phone they get a row of their own - four equal tabs - so none of them can be clipped. */}
+          <nav className="mt-3 grid grid-cols-4 gap-1 md:hidden" aria-label="Sections">
+            <SectionLinks pendingLikes={pendingLikes} unreadMessages={unreadMessages} compact />
+          </nav>
         </div>
       </header>
 
       <main
-        className={`mx-auto w-full max-w-6xl px-5 ${fill ? "flex min-h-0 flex-1 flex-col py-6" : "py-10"}`}
+        className={`mx-auto w-full max-w-6xl px-4 sm:px-5 ${fill ? "flex min-h-0 flex-1 flex-col py-4 sm:py-6" : "py-6 sm:py-10"}`}
       >
         {children}
       </main>
       <PanicButton />
     </div>
+  );
+}
+
+/** The four sections as pills, with their badges. {@code compact} is the phone version: equal width, centred. */
+function SectionLinks({
+  pendingLikes,
+  unreadMessages,
+  compact = false,
+}: {
+  pendingLikes: number;
+  unreadMessages: number;
+  compact?: boolean;
+}) {
+  return (
+    <>
+      {navItems.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          className={({ isActive }) =>
+            `relative inline-flex items-center justify-center rounded-full transition ${
+              compact ? "min-w-0 px-0.5 py-1.5 text-[11px] min-[320px]:text-[12px] min-[360px]:text-[13px]" : "px-4 py-1.5 text-sm"
+            } ${isActive ? "bg-ink text-canvas" : "text-muted hover:bg-white/70 hover:text-ink"}`
+          }
+        >
+          <span className="truncate">{item.label}</span>
+          {item.to === "/likes" && pendingLikes > 0 && <Badge count={pendingLikes} floating={compact} />}
+          {item.to === "/messages" && unreadMessages > 0 && <Badge count={unreadMessages} floating={compact} />}
+        </NavLink>
+      ))}
+    </>
+  );
+}
+
+/** {@code floating} pins the count over the corner of its tab, so on a phone it never takes room from the label. */
+function Badge({ count, floating = false }: { count: number; floating?: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-gold font-semibold text-white ${
+        floating
+          ? "absolute -right-0.5 -top-1.5 h-4 min-w-4 px-1 text-[10px] ring-2 ring-canvas"
+          : "ml-1 h-5 min-w-5 px-1.5 text-[11px]"
+      }`}
+    >
+      {count}
+    </span>
   );
 }

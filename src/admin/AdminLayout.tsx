@@ -15,6 +15,7 @@ const links = [
   { to: "/admin/users", label: "Users", end: false },
   { to: "/admin/photos", label: "Recent photos", end: false },
   { to: "/admin/analytics", label: "Analytics", end: false },
+  { to: "/admin/app", label: "App", end: false },
   { to: "/admin/audit", label: "Audit log", end: false },
 ];
 
@@ -48,19 +49,20 @@ export default function AdminLayout({ me, children }: { me: AdminMe; children: R
   return (
     <div className="min-h-screen bg-[#f4f2ee]">
       <header className="bg-ink text-canvas">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5 py-3">
-          <div className="flex items-center gap-8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-5">
+          {/* On a phone this group dissolves, so the logo and the controls share the first row and the links get a second one. */}
+          <div className="contents items-center gap-8 lg:flex">
             <span className="flex items-center gap-2 font-display text-xl font-semibold tracking-wide">
               <Logo variant="dark" className="h-9" /> <span className="ml-1 rounded bg-gold px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-white">Admin</span>
             </span>
-            <nav className="flex gap-1">
+            <nav className="order-last flex w-full gap-1 overflow-x-auto pb-1 lg:order-none lg:w-auto lg:overflow-visible lg:pb-0">
               {links.map((l) => (
                 <NavLink
                   key={l.to}
                   to={l.to}
                   end={l.end}
                   className={({ isActive }) =>
-                    `rounded px-3 py-1.5 text-sm transition ${
+                    `shrink-0 whitespace-nowrap rounded px-3 py-1.5 text-sm transition ${
                       isActive ? "bg-white/15 text-white" : "text-white/60 hover:text-white"
                     }`
                   }
@@ -81,7 +83,7 @@ export default function AdminLayout({ me, children }: { me: AdminMe; children: R
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8">{children}</main>
     </div>
   );
 }
