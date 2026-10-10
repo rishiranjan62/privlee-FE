@@ -536,6 +536,8 @@ export interface AppReleaseInfo {
   sizeBytes: number;
   sha256: string;
   current: boolean;
+  /** Kept in file storage rather than in the database; the download link still counts, then sends people on. */
+  hosted: boolean;
   uploadedAt: string;
   publishedAt: string | null;
   downloads: number;
@@ -551,4 +553,6 @@ export interface AppReleasesOverview {
   releases: AppReleaseInfo[];
   uploadEnabled: boolean;
   maxUploadMb: number;
+  /** Where hosted builds may be linked from; empty when the server isn't set up for it. */
+  hostedBaseUrl: string;
 }

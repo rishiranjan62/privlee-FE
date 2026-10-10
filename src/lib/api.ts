@@ -126,6 +126,20 @@ export const api = {
     }
   },
 
+  /** Links a build already in file storage; the server reads it, checks it and works out its size and checksum. */
+  async linkAppRelease(versionName: string, notes: string, url: string): Promise<AppReleaseInfo> {
+    try {
+      const { data } = await client.post<AppReleaseInfo>("/admin/app-releases/hosted", {
+        versionName,
+        notes: notes.trim() || null,
+        url,
+      });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not link that build"));
+    }
+  },
+
   async publishAppRelease(id: string): Promise<AppReleaseInfo> {
     try {
       const { data } = await client.post<AppReleaseInfo>(`/admin/app-releases/${id}/publish`);
