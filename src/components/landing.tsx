@@ -52,15 +52,32 @@ export function SpotCard({ children, className = "" }: { children: ReactNode; cl
   );
 }
 
+/**
+ * The headline's changing last word. All the words sit in one grid cell, so the headline is always as wide as the
+ * longest and never jumps when the word changes; only the current one is visible. The first word is simply there (no
+ * fade-in), so the first thing painted is the real headline; later words ease in.
+ */
 export function RotatingWord({ words, interval = 2600 }: { words: string[]; interval?: number }) {
   const [i, setI] = useState(0);
+  const [rotated, setRotated] = useState(false);
   useEffect(() => {
-    const t = setInterval(() => setI((n) => (n + 1) % words.length), interval);
+    const t = setInterval(() => {
+      setRotated(true);
+      setI((n) => (n + 1) % words.length);
+    }, interval);
     return () => clearInterval(t);
   }, [words.length, interval]);
   return (
-    <span key={i} className="swap-word gold-text inline-block italic">
-      {words[i]}
+    <span className="inline-grid">
+      {words.map((word, n) => (
+        <span
+          key={word}
+          aria-hidden={n !== i}
+          className={`col-start-1 row-start-1 gold-text italic ${n === i ? (rotated ? "swap-word" : "") : "invisible"}`}
+        >
+          {word}
+        </span>
+      ))}
     </span>
   );
 }

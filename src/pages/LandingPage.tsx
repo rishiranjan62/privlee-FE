@@ -121,7 +121,7 @@ export default function LandingPage() {
 
         <div className="mx-auto grid max-w-6xl items-center gap-16 px-6 pb-24 pt-36 lg:grid-cols-2 lg:pt-44">
           <div>
-            <p className="rise inline-flex items-center gap-2 rounded-full border border-[color:var(--l-line)] bg-white/60 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.25em] text-[color:var(--l-gold)] backdrop-blur">
+            <p className="rise-soft inline-flex items-center gap-2 rounded-full border border-[color:var(--l-line)] bg-white/60 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.25em] text-[color:var(--l-gold)] backdrop-blur">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inset-0 rounded-full bg-[color:var(--l-gold)] [animation:pulse-ring_2s_ease-out_infinite]" />
                 <span className="relative h-2 w-2 rounded-full bg-[color:var(--l-gold)]" />
@@ -129,7 +129,7 @@ export default function LandingPage() {
               Discreet by design
             </p>
             <h1
-              className="rise mt-7 font-display text-6xl font-medium leading-[1.02] sm:text-7xl lg:text-[5.5rem]"
+              className="rise-soft mt-7 font-display text-6xl font-medium leading-[1.02] sm:text-7xl lg:text-[5.5rem]"
               style={{ animationDelay: "120ms" }}
             >
               Connection,
@@ -137,13 +137,13 @@ export default function LandingPage() {
               without <RotatingWord words={["exposure.", "judgement.", "noise.", "a trace."]} />
             </h1>
             <p
-              className="rise mt-8 max-w-md text-lg font-light leading-relaxed text-[color:var(--l-muted)]"
+              className="rise-soft mt-8 max-w-md text-lg font-light leading-relaxed text-[color:var(--l-muted)]"
               style={{ animationDelay: "260ms" }}
             >
               A quiet, private space for adults who want to meet on their own terms. No real names. No public
               profiles. Nothing left on show.
             </p>
-            <div className="rise mt-10 flex flex-wrap items-center gap-4" style={{ animationDelay: "380ms" }}>
+            <div className="rise-soft mt-10 flex flex-wrap items-center gap-4" style={{ animationDelay: "380ms" }}>
               <Link
                 to="/signup"
                 className="group relative overflow-hidden rounded-full bg-[color:var(--l-ink)] px-8 py-3.5 font-medium text-[color:var(--l-bg)] shadow-[0_18px_40px_-14px_rgba(29,26,22,0.6)] transition hover:-translate-y-0.5"
@@ -158,7 +158,7 @@ export default function LandingPage() {
                 Sign in
               </Link>
             </div>
-            <p className="rise mt-6 text-xs text-[color:var(--l-muted)]" style={{ animationDelay: "480ms" }}>
+            <p className="rise-soft mt-6 text-xs text-[color:var(--l-muted)]" style={{ animationDelay: "480ms" }}>
               Adults 18+ only.
             </p>
           </div>

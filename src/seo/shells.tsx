@@ -85,7 +85,19 @@ export function renderShell(path: string): Shell | null {
         ...pageMeta.landing,
         body: render(
           <main>
-            <h1 className="mt-10 font-display text-6xl font-medium leading-tight">Connection, without exposure.</h1>
+            {/* Built exactly like the real headline (same size, same line break, same reserved width for the changing word), so when the app takes over nothing moves and the page is already painted. */}
+            <h1 className="mt-7 font-display text-6xl font-medium leading-[1.02] sm:text-7xl lg:text-[5.5rem]">
+              Connection,
+              <br />
+              without{" "}
+              <span className="inline-grid">
+                {["exposure.", "judgement.", "noise.", "a trace."].map((word, n) => (
+                  <span key={word} className={`col-start-1 row-start-1 gold-text italic ${n === 0 ? "" : "invisible"}`}>
+                    {word}
+                  </span>
+                ))}
+              </span>
+            </h1>
             <p className="mt-6 text-lg">
               A quiet, private space for adults who want to meet on their own terms. No real names. No public
               profiles. Nothing left on show.
