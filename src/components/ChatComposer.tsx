@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, WALLET_CHANGED } from "../lib/api";
+import { useStreamEvent } from "../context/StreamContext";
 import type { GiftKey, GiftOption } from "../lib/types";
 
 const EMOJI = [
@@ -21,11 +22,32 @@ export default function ChatComposer({ matchId, onSend }: Props) {
   const [sending, setSending] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [textCost, setTextCost] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.getGiftCatalogue(matchId).then(setGifts).catch(() => setGifts([]));
   }, [matchId]);
+
+  // In a conversation someone paid to start, each text costs credits until the other person writes
+  // back. Asked again whenever credits move, which is also when a send may have changed the answer.
+  useEffect(() => {
+    const load = () =>
+      api
+        .getMessagePricing(matchId)
+        .then((p) => setTextCost(p.textCost))
+        .catch(() => setTextCost(0));
+    load();
+    window.addEventListener(WALLET_CHANGED, load);
+    return () => window.removeEventListener(WALLET_CHANGED, load);
+  }, [matchId]);
+
+  // The other person writing back is what makes messages free, so look again when one arrives.
+  useStreamEvent((event) => {
+    if (event.type === "MESSAGE") {
+      api.getMessagePricing(matchId).then((p) => setTextCost(p.textCost)).catch(() => {});
+    }
+  });
 
   // The tray shows what they can afford, so look again whenever it opens and after anything they spend.
   useEffect(() => {
@@ -141,6 +163,15 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         </p>
       )}
 
+      {textCost > 0 && (
+        <p className="mb-3 px-1 text-xs text-muted">
+          You haven't matched, so each message costs {textCost} credits until they write back.{" "}
+          <Link to="/credits" className="text-gold hover:underline">
+            Get more credits
+          </Link>
+        </p>
+      )}
+
       <form onSubmit={submit} className="flex items-center gap-2">
         <button
           type="button"
@@ -164,6 +195,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         >
           🎁
         </button>
+        {textCost === 0 && (
         <button
           type="button"
           onClick={sendWink}
@@ -174,6 +206,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         >
           😉
         </button>
+        )}
 
         <input
           ref={inputRef}
@@ -187,7 +220,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
           disabled={sending || !draft.trim()}
           className="group relative shrink-0 overflow-hidden rounded-full bg-ink px-7 py-3 font-medium text-canvas transition hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
         >
-          <span className="relative z-10">Send</span>
+          <span className="relative z-10">{textCost > 0 ? `Send · ${textCost}` : "Send"}</span>
           <span className="absolute inset-0 -translate-x-full bg-gold transition-transform duration-500 ease-out group-hover:translate-x-0" />
         </button>
       </form>

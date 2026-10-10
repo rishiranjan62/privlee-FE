@@ -67,6 +67,8 @@ export interface Profile extends ProfileExtras {
   photoAccess: PhotoAccessStatus | null;
   /** Set when you and this person have matched. */
   matchId: string | null;
+  /** Any conversation with this person, including one someone paid to start. */
+  conversationId: string | null;
   /** Only present on your own profile: whether you already have a password of your own. */
   passwordSet: boolean | null;
 }
@@ -173,6 +175,10 @@ export interface Traffic {
   byPlatform: TrafficSplit[];
   byPage: TrafficSplit[];
   byReferrer: TrafficSplit[];
+  /** Countries by name; "Unknown" where the place could not be worked out. */
+  byCountry: TrafficSplit[];
+  /** "City, State, Country", only for visits where the city was available. */
+  byCity: TrafficSplit[];
   funnel: { landingViews: number; signupViews: number; newMembers: number };
 }
 
@@ -506,4 +512,9 @@ export type PaymentStatus = "CREATED" | "PAID" | "EXPIRED" | "FAILED";
 export interface WalletData {
   balance: number;
   transactions: { amount: number; label: string; createdAt: string }[];
+}
+
+/** What the next text costs the sender, in credits. 0 when it is free. */
+export interface MessagePricing {
+  textCost: number;
 }

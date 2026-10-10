@@ -29,6 +29,7 @@ import type {
   MatchSummary,
   GiftKey,
   LikeAllowance,
+  MessagePricing,
   PackCatalogue,
   PaymentCheckout,
   PaymentStatus,
@@ -150,6 +151,26 @@ export const api = {
   /** Always succeeds from the caller's point of view - the server never says whether the email exists. */
   async resendVerification(email: string): Promise<void> {
     await client.post("/auth/resend-verification", { email });
+  },
+
+  /**
+   * Asks for a reset link. The server answers the same whatever the address, and only emails one to an
+   * address that has an account, so a success here says nothing about whether it did.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    try {
+      await client.post("/auth/forgot-password", { email });
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't do that just now. Please try again."));
+    }
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    try {
+      await client.post("/auth/reset-password", { token, newPassword });
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't change your password. Please try again."));
+    }
   },
 
   async getAdminMetrics(): Promise<Metrics> {
@@ -513,11 +534,34 @@ export const api = {
   ): Promise<Message> {
     try {
       const { data } = await client.post<Message>(`/matches/${matchId}/messages`, payload);
-      // A gift spends credits, so anything showing the balance should look again.
-      if (payload.type === "GIFT") window.dispatchEvent(new Event(WALLET_CHANGED));
+      // Gifts, and texts in a conversation someone paid to start, spend credits.
+      window.dispatchEvent(new Event(WALLET_CHANGED));
       return data;
     } catch (err) {
       throw new Error(errorMessage(err, "That didn't send. Please try again."));
+    }
+  },
+
+  /** What opening a conversation with someone you have not matched with costs. */
+  async getStartPricing(): Promise<MessagePricing> {
+    const { data } = await client.get<MessagePricing>("/conversations/start-pricing");
+    return data;
+  },
+
+  /** What the next text costs in this conversation: 0 in a real match, or once they have written back. */
+  async getMessagePricing(matchId: string): Promise<MessagePricing> {
+    const { data } = await client.get<MessagePricing>(`/matches/${matchId}/messages/pricing`);
+    return data;
+  },
+
+  /** Writes to someone you have not matched with. Costs credits; returns the conversation that now exists. */
+  async messageMember(userId: string, content: string): Promise<{ matchId: string; message: Message }> {
+    try {
+      const { data } = await client.post<{ matchId: string; message: Message }>(`/conversations/start/${userId}`, { content });
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That message didn't send. Please try again."));
     }
   },
 

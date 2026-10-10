@@ -92,7 +92,10 @@ export default function CreditsPage() {
             "Your credits"
           )}
         </h1>
-        <p className="mt-3 text-muted">Use them for gifts, and for likes once your free ones for the day are gone.</p>
+        <p className="mt-3 text-muted">
+          Use them for gifts, for likes once your free ones for the day are gone, and to message people you haven't
+          matched with.
+        </p>
       </header>
 
       {notice && (
@@ -131,6 +134,7 @@ export default function CreditsPage() {
                 {error}
               </p>
             )}
+            <p className="mb-4 text-sm text-muted">₹1 = 10 credits</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {catalogue.packs.map((pack) => (
                 <button
