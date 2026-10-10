@@ -41,14 +41,20 @@ export default function ChatThread({ matchId, onActivity }: Props) {
       if (document.visibilityState === "visible") {
         api.startReading(matchId).catch(() => {});
       } else {
-        api.stopReading().catch(() => {});
+        api.stopReading(matchId).catch(() => {});
       }
     }
     document.addEventListener("visibilitychange", onVisibility);
+    // The server only believes "this is open" for 90 seconds at a time, so a closed tab or a lost connection can never
+    // leave it stuck - say so again every half minute for as long as the thread stays on screen.
+    const renew = window.setInterval(() => {
+      if (document.visibilityState === "visible") api.startReading(matchId).catch(() => {});
+    }, 30_000);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
-      api.stopReading().catch(() => {});
+      window.clearInterval(renew);
+      api.stopReading(matchId).catch(() => {});
     };
   }, [matchId, reload]);
 

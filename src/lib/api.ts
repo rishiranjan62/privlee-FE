@@ -660,8 +660,9 @@ export const api = {
     await client.post(`/conversations/${matchId}/reading`);
   },
 
-  async stopReading(): Promise<void> {
-    await client.delete("/conversations/reading");
+  /** With the thread's id, only that thread is closed - a late "closed" can never undo a newer "opened". */
+  async stopReading(matchId?: string): Promise<void> {
+    await client.delete("/conversations/reading", { params: matchId ? { matchId } : {} });
   },
 
   async markConversationRead(matchId: string): Promise<void> {
