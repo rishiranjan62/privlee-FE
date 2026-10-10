@@ -23,6 +23,10 @@ export default function AppReleasesPage() {
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [linkVersion, setLinkVersion] = useState("");
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkNotes, setLinkNotes] = useState("");
+  const [linking, setLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
@@ -58,6 +62,25 @@ export default function AppReleasesPage() {
       setError(err instanceof Error ? err.message : "Could not upload that build");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function link(e: FormEvent) {
+    e.preventDefault();
+    setLinking(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const created = await api.linkAppRelease(linkVersion, linkNotes, linkUrl);
+      setNotice(`Version ${created.versionName} is linked and checked. Nobody can download it until you publish it.`);
+      setLinkVersion("");
+      setLinkUrl("");
+      setLinkNotes("");
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not link that build");
+    } finally {
+      setLinking(false);
     }
   }
 
@@ -149,6 +172,7 @@ export default function AppReleasesPage() {
               <tr key={r.id} className="border-t border-line/60 align-top">
                 <td className="px-3 py-2">
                   <strong>{r.versionName}</strong>
+                  {r.hosted && <span className="ml-2 rounded border border-line px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted">Hosted</span>}
                   {r.current && <span className="ml-2 rounded bg-gold px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white">Current</span>}
                   {r.notes && <p className="mt-0.5 text-xs text-muted">{r.notes}</p>}
                 </td>
@@ -174,6 +198,64 @@ export default function AppReleasesPage() {
           </tbody>
         </table>
       </div>
+
+      {data.hostedBaseUrl && (
+        <>
+          <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted">Link a build from file storage</h2>
+          <form onSubmit={link} className="mt-3 max-w-xl space-y-4 rounded-lg border border-line bg-white p-4">
+            <p className="text-xs leading-relaxed text-muted">
+              For a build you have already put in the storage bucket. The server reads the file once, checks it is an app
+              package and works out its size and checksum itself. Downloads still go through Privlee, so they are still
+              counted. Only addresses under {data.hostedBaseUrl} are accepted.
+            </p>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted" htmlFor="link-version">
+                Version
+              </label>
+              <input
+                id="link-version"
+                value={linkVersion}
+                onChange={(e) => setLinkVersion(e.target.value)}
+                placeholder="0.2.0-beta1"
+                maxLength={40}
+                className="mt-1 w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted" htmlFor="link-url">
+                Address of the .apk
+              </label>
+              <input
+                id="link-url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder={`${data.hostedBaseUrl}/privlee-0.2.0-beta1.apk`}
+                maxLength={500}
+                className="mt-1 w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted" htmlFor="link-notes">
+                Notes (optional)
+              </label>
+              <input
+                id="link-notes"
+                value={linkNotes}
+                onChange={(e) => setLinkNotes(e.target.value)}
+                maxLength={1000}
+                className="mt-1 w-full rounded border border-line px-3 py-2 text-sm outline-none focus:border-gold"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={linking || !linkVersion.trim() || !linkUrl.trim() || !data.uploadEnabled}
+              className="rounded bg-ink px-5 py-2 text-sm font-medium text-canvas transition hover:bg-gold disabled:opacity-50"
+            >
+              {linking ? "Checking the file..." : "Link"}
+            </button>
+          </form>
+        </>
+      )}
 
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wider text-muted">Upload a new build</h2>
       <form onSubmit={upload} className="mt-3 max-w-xl space-y-4 rounded-lg border border-line bg-white p-4">
