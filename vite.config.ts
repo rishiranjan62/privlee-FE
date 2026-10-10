@@ -127,6 +127,12 @@ function seoOutput(env: Record<string, string>): Plugin {
         }
 
         // --- pre-rendered public pages
+        // The two faces the first screen is drawn in (the headline, and the body text), fetched at once instead of
+        // only after the stylesheet has been read. The hashed file names come from the bundle.
+        const preloads = Object.keys(bundle)
+          .filter((f) => /assets\/(cormorant-garamond-latin-500|inter-latin-300|inter-latin-400)-normal-.*\.woff2$/.test(f))
+          .map((f) => `<link rel="preload" as="font" type="font/woff2" href="/${f}" crossorigin />`)
+
         const index = bundle['index.html']
         if (!index || index.type !== 'asset') return
         const template = String(index.source)
@@ -156,6 +162,7 @@ function seoOutput(env: Record<string, string>): Plugin {
               .replace('<div id="root"></div>', `<div id="root">${shell.body}</div>`)
 
             const extra = [
+              ...preloads,
               open ? '<meta name="robots" content="index, follow" />' : '<meta name="robots" content="noindex, nofollow" />',
               open && base ? `<link rel="canonical" href="${base}${path}" />` : '',
               open && base ? `<meta property="og:url" content="${base}${path}" />` : '',

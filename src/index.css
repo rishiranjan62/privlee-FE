@@ -6,7 +6,7 @@
   --color-card: #fffdf9;
   --color-line: #e6dccb;
   --color-ink: #1d1a16;
-  --color-muted: #6f675c;
+  --color-muted: #665e53;
   --color-gold: #a8763a;
   --color-gold-soft: #d4a762;
   --color-danger: #a2453d;
@@ -69,6 +69,12 @@ body {
   100% { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 
+/* For what is on screen at first load: moves in, but is never invisible, so the page counts as painted at once. */
+@keyframes rise-soft {
+  from { transform: translateY(12px); }
+  to { transform: translateY(0); }
+}
+.rise-soft { animation: rise-soft 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .rise { animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .float { animation: float 7s ease-in-out infinite; }
 .drift { animation: drift 18s ease-in-out infinite; }
@@ -114,7 +120,7 @@ body {
 .spot:hover::before { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise, .float, .drift, .marquee-track, .photo-unblur, .swap-word, .gold-text { animation: none; }
+  .rise, .rise-soft, .float, .drift, .marquee-track, .photo-unblur, .swap-word, .gold-text { animation: none; }
   .reveal { opacity: 1; transform: none; filter: none; transition: none; }
 }
 
