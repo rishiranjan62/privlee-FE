@@ -518,3 +518,37 @@ export interface WalletData {
 export interface MessagePricing {
   textCost: number;
 }
+
+/** The Android beta as the public download page sees it. Everything is null until an admin has published a build. */
+export interface AndroidRelease {
+  available: boolean;
+  versionName: string | null;
+  notes: string | null;
+  sizeBytes: number | null;
+  sha256: string | null;
+  publishedAt: string | null;
+}
+
+export interface AppReleaseInfo {
+  id: string;
+  versionName: string;
+  notes: string | null;
+  sizeBytes: number;
+  sha256: string;
+  current: boolean;
+  uploadedAt: string;
+  publishedAt: string | null;
+  downloads: number;
+}
+
+/** What the admin console shows: how often the app was downloaded, and every uploaded build. */
+export interface AppReleasesOverview {
+  total: number;
+  today: number;
+  last7Days: number;
+  last30Days: number;
+  daily: { day: string; downloads: number }[];
+  releases: AppReleaseInfo[];
+  uploadEnabled: boolean;
+  maxUploadMb: number;
+}

@@ -130,11 +130,11 @@ export default function ProfileActionsMenu({ userId, pseudonym, matchId }: Props
 
       {confirming && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/40 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex justify-center overflow-y-auto bg-ink/40 px-4 py-6 backdrop-blur-sm"
           onClick={() => setConfirming(null)}
         >
           <div
-            className="w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_80px_-30px_rgba(29,26,22,0.5)]"
+            className="my-auto w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_80px_-30px_rgba(29,26,22,0.5)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="font-display text-3xl font-medium">{copy.title}</h2>

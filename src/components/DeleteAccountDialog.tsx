@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 import { inputClass, labelClass } from "../lib/ui";
+import Portal from "./Portal";
 import PasswordInput from "./PasswordInput";
 
 interface Props {
@@ -41,15 +42,16 @@ export default function DeleteAccountDialog({ hasPassword, onClose }: Props) {
   }
 
   return (
+    <Portal>
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-ink/40 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex justify-center overflow-y-auto bg-ink/40 px-4 py-6 backdrop-blur-sm"
       onClick={deleting ? undefined : onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-title"
-        className="w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_80px_-30px_rgba(29,26,22,0.5)]"
+        className="my-auto w-full max-w-md rounded-3xl border border-line bg-card p-7 shadow-[0_40px_80px_-30px_rgba(29,26,22,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="delete-title" className="font-display text-3xl font-medium">
@@ -121,5 +123,6 @@ export default function DeleteAccountDialog({ hasPassword, onClose }: Props) {
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

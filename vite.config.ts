@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { createServer, defineConfig, loadEnv, type Plugin } from 'vite'
 // Explicit extension: this file is checked under Node's module rules, which require one.
-import { guides } from './src/lib/siteContent.ts'
+import { faq, guides } from './src/lib/siteContent.ts'
 
 /** The pages search engines may list. Everything else sits behind the sign-in. */
 const PUBLIC_PATHS = [
@@ -65,16 +65,54 @@ function seoOutput(env: Record<string, string>): Plugin {
       order: 'post',
       async handler(_options, bundle) {
         // --- robots.txt and sitemap.xml
+        const rules = [...PUBLIC_PATHS.map((p) => `Allow: ${p}$`), ...PRIVATE_PREFIXES.map((p) => `Disallow: ${p}`)]
+        // AI search engines and assistants that fetch a page when someone asks them to. They are named so their
+        // access is a stated choice, with exactly the same rules as everyone else: the public pages, never the app.
+        const assistants = [
+          'OAI-SearchBot',
+          'ChatGPT-User',
+          'Claude-SearchBot',
+          'Claude-User',
+          'PerplexityBot',
+          'Perplexity-User',
+          'Applebot',
+          'Bingbot',
+          'Googlebot',
+        ]
         const robots = open
           ? [
-              'User-agent: *',
-              ...PUBLIC_PATHS.map((p) => `Allow: ${p}$`),
-              ...PRIVATE_PREFIXES.map((p) => `Disallow: ${p}`),
-              ...(base ? ['', `Sitemap: ${base}/sitemap.xml`] : []),
-              '',
+              ...[...assistants, '*'].flatMap((agent) => [`User-agent: ${agent}`, ...rules, '']),
+              ...(base ? [`Sitemap: ${base}/sitemap.xml`, ''] : []),
             ].join('\n')
           : 'User-agent: *\nDisallow: /\n'
         this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots })
+
+        // A short, plain-text map of the site for AI assistants and agents (https://llmstxt.org).
+        if (base && open) {
+          const link = (title: string, path: string, note: string) => `- [${title}](${base}${path}): ${note}`
+          const llms = [
+            '# Privlee',
+            '',
+            '> Privlee is a private, pseudonym-only space for adults (18+) seeking discreet connection. Members use a chosen pseudonym, photos are blurred until the owner allows someone to see them, and a panic button turns the app into an ordinary notes screen.',
+            '',
+            'Members need an account to browse profiles; the pages below are the public ones. Profiles, messages and the member app are private and are not available to crawlers or agents.',
+            '',
+            '## Start here',
+            link('Home', '/', 'what Privlee is and how it protects privacy'),
+            link('Create a profile', '/signup', 'free sign-up with email or Google; adults 18+ only'),
+            link('Sign in', '/login', 'for existing members'),
+            '',
+            '## Learn more',
+            link('FAQ', '/faq', faq.description),
+            ...guides.map((g: { title: string; slug: string; description: string }) => link(g.title, `/guides/${g.slug}`, g.description)),
+            '',
+            '## Policies',
+            link('Terms of Service', '/terms', 'the rules for using Privlee'),
+            link('Privacy Policy', '/privacy', 'what is collected, how it is used and protected'),
+            '',
+          ].join('\n')
+          this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llms })
+        }
 
         if (base && open) {
           const day = new Date().toISOString().slice(0, 10)
@@ -126,13 +164,20 @@ function seoOutput(env: Record<string, string>): Plugin {
               base ? '<meta property="og:image:width" content="1200" />' : '',
               base ? '<meta property="og:image:height" content="630" />' : '',
               base ? `<meta name="twitter:image" content="${base}/brand/og-image.png" />` : '',
+              base ? '<meta property="og:image:alt" content="Privlee - connection, without exposure" />' : '',
+              base ? '<meta name="twitter:image:alt" content="Privlee - connection, without exposure" />' : '',
               ...verification,
               shell.jsonLd ? `<script type="application/ld+json">${JSON.stringify(shell.jsonLd)}</script>` : '',
             ].filter(Boolean)
             // The site-wide "WebSite" description belongs on the home page only; there it also names the address.
             if (path === '/' && base) html = html.replace('"name": "Privlee",', `"name": "Privlee",\n        "url": "${base}/",`)
+            // Who runs the site, with its logo - what a search engine may show beside the result.
+            const organization =
+              path === '/' && base
+                ? `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: 'Privlee', url: `${base}/`, logo: `${base}/icon-512.png` })}</script>`
+                : ''
             if (path !== '/') html = html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '')
-            html = html.replace('</head>', `    ${extra.join('\n    ')}\n  </head>`)
+            html = html.replace('</head>', `    ${[...extra, organization].filter(Boolean).join('\n    ')}\n  </head>`)
             if (base) html = html.replace('<meta name="twitter:card" content="summary" />', '<meta name="twitter:card" content="summary_large_image" />')
 
             if (path === '/') index.source = html

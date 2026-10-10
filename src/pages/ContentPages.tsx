@@ -1,6 +1,6 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { privacy, terms } from "../lib/legal";
-import { faq, findGuide, guides } from "../lib/siteContent";
+import { faq, findGuide, guideJsonLd, guides } from "../lib/siteContent";
 import { usePageMeta } from "../lib/seo";
 import Logo from "../components/Logo";
 import DocumentPage from "./DocumentPage";
@@ -107,6 +107,7 @@ export function GuidePage() {
       doc={guide}
       path={`/guides/${guide.slug}`}
       description={guide.description}
+      jsonLd={guideJsonLd(guide)}
       contents={false}
       related={[
         ...guides.filter((g) => g.slug !== guide.slug).map((g) => ({ to: `/guides/${g.slug}`, label: g.title })),

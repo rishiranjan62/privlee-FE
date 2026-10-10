@@ -172,7 +172,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         </p>
       )}
 
-      <form onSubmit={submit} className="flex items-center gap-2">
+      <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => setTray((t) => (t === "emoji" ? "none" : "emoji"))}
@@ -213,7 +213,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Type a message..."
-          className="min-w-0 flex-1 rounded-full border border-line bg-white/70 px-5 py-3 text-ink placeholder:text-[#a79d8d] outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/15"
+          className="min-w-[9rem] flex-1 rounded-full border border-line bg-white/70 px-5 py-3 text-ink placeholder:text-[#a79d8d] outline-none transition focus:border-gold focus:bg-white focus:ring-4 focus:ring-gold/15"
         />
         <button
           type="submit"

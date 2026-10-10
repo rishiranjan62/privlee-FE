@@ -268,3 +268,18 @@ export const guides: SiteDocument[] = [
 export function findGuide(slug: string | undefined): SiteDocument | undefined {
   return guides.find((g) => g.slug === slug);
 }
+
+/** Structured data for a guide, so a search engine can treat it as an article with a date. */
+export function guideJsonLd(guide: SiteDocument) {
+  const modified = new Date(guide.updated);
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: guide.title,
+    description: guide.description,
+    inLanguage: "en",
+    ...(Number.isNaN(modified.getTime()) ? {} : { dateModified: `${modified.getFullYear()}-${String(modified.getMonth() + 1).padStart(2, "0")}-${String(modified.getDate()).padStart(2, "0")}` }),
+    author: { "@type": "Organization", name: "Privlee" },
+    publisher: { "@type": "Organization", name: "Privlee" },
+  };
+}

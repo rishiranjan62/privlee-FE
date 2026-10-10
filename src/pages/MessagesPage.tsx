@@ -65,9 +65,9 @@ export default function MessagesPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] gap-5 md:grid-cols-[19rem_1fr]">
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-5 md:grid-cols-[19rem_minmax(0,1fr)]">
           {/* On a phone only one pane shows at a time: the list, or the open thread. */}
-          <aside className={`${matchId ? "hidden md:block" : "block"} min-h-0`}>
+          <aside className={`${matchId ? "hidden md:block" : "block"} min-h-0 min-w-0`}>
             <ul onScroll={revealScrollbar} className="thin-scroll max-h-full overflow-y-auto rounded-3xl border border-line bg-card shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]">
               {conversations === null ? (
                 <li className="px-4 py-8 text-center text-sm text-muted">Loading...</li>
@@ -136,11 +136,11 @@ export default function MessagesPage() {
           </aside>
 
           <section
-            className={`${matchId ? "flex" : "hidden md:flex"} min-h-0 flex-col rounded-3xl border border-line bg-card p-5 shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]`}
+            className={`${matchId ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-col rounded-3xl border border-line bg-card p-4 sm:p-5 shadow-[0_30px_60px_-40px_rgba(120,80,30,0.4)]`}
           >
             {matchId ? (
               <>
-                <div className="mb-3 flex shrink-0 items-center gap-3 border-b border-line/70 pb-3">
+                <div className="mb-3 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line/70 pb-3">
                   <button
                     onClick={() => navigate("/messages")}
                     className="text-sm text-muted transition hover:text-ink md:hidden"
@@ -158,7 +158,7 @@ export default function MessagesPage() {
                       <span className="text-xs text-muted">{active.otherUser.city}</span>
                     </>
                   )}
-                  <span className="ml-auto text-[11px] text-muted">
+                  <span className="basis-full text-[11px] text-muted sm:ml-auto sm:basis-auto">
                     Messages stay between the two of you.
                   </span>
                 </div>

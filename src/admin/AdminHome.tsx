@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import MiniBarChart from "./MiniBarChart";
 import { genderLabels } from "../lib/labels";
-import type { Metrics } from "../lib/types";
+import type { AppReleasesOverview, Metrics } from "../lib/types";
 
 function Tile({ label, value, hint, to, alert }: { label: string; value: number; hint?: string; to?: string; alert?: boolean }) {
   const body = (
@@ -57,9 +57,12 @@ function ShareBars({ title, rows, empty }: { title: string; rows: { label: strin
 
 export default function AdminHome() {
   const [m, setM] = useState<Metrics | null>(null);
+  const [app, setApp] = useState<AppReleasesOverview | null>(null);
 
   useEffect(() => {
     api.getAdminMetrics().then(setM).catch(() => setM(null));
+    // A side figure: if it cannot be loaded, the tile simply is not shown.
+    api.getAppReleases().then(setApp).catch(() => setApp(null));
   }, []);
 
   if (!m) return <p className="py-10 text-center text-muted">Loading...</p>;
@@ -95,6 +98,9 @@ export default function AdminHome() {
           hint="email not yet confirmed"
           to="/admin/users?filter=unverified"
         />
+        {app && (
+          <Tile label="App downloads" value={app.total} hint={`${app.last7Days} in the last 7 days`} to="/admin/app" />
+        )}
         <Tile
           label="Deleted accounts"
           value={t.deleted}

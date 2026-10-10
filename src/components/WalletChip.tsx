@@ -27,7 +27,7 @@ export default function WalletChip() {
     <Link
       to="/credits"
       title="Your credits"
-      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/60 px-3 py-1 text-sm transition hover:border-gold"
+      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/60 px-2 py-1 text-sm min-[320px]:px-2.5 sm:px-3 transition hover:border-gold"
     >
       <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-[#d4a762] to-[#8f5f26]" />
       <span className="tabular-nums">{balance.toLocaleString()}</span>

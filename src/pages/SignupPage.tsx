@@ -276,8 +276,8 @@ export default function SignupPage() {
             <>
               {inviteRequired && (
                 <div>
-                  <label className={labelClass}>Invite code</label>
-                  <input
+                  <label htmlFor="signup-invite-code" className={labelClass}>Invite code</label>
+                  <input id="signup-invite-code"
                     placeholder="Sign-up is by invitation for now"
                     required
                     maxLength={64}
@@ -289,8 +289,8 @@ export default function SignupPage() {
                 </div>
               )}
               <div>
-                <label className={labelClass}>Pseudonym</label>
-                <input
+                <label htmlFor="signup-pseudonym" className={labelClass}>Pseudonym</label>
+                <input id="signup-pseudonym"
                   placeholder="What others will see"
                   required
                   minLength={2}
@@ -303,8 +303,8 @@ export default function SignupPage() {
               {!googleIdToken && (
                 <>
                   <div>
-                    <label className={labelClass}>Email</label>
-                    <input
+                    <label htmlFor="signup-email" className={labelClass}>Email</label>
+                    <input id="signup-email"
                       type="email"
                       required
                       autoComplete="email"
@@ -315,8 +315,8 @@ export default function SignupPage() {
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Password</label>
-                    <PasswordInput
+                    <label htmlFor="signup-password" className={labelClass}>Password</label>
+                    <PasswordInput id="signup-password"
                       required
                       minLength={8}
                       autoComplete="new-password"
@@ -335,8 +335,8 @@ export default function SignupPage() {
             <>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <label className={labelClass}>Date of birth (18+)</label>
-                  <input
+                  <label htmlFor="signup-date-of-birth-18" className={labelClass}>Date of birth (18+)</label>
+                  <input id="signup-date-of-birth-18"
                     type="date"
                     required
                     // Nobody chooses a date that would make them under 18; the server checks again.

@@ -85,8 +85,8 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="rise space-y-5" style={{ animationDelay: "160ms" }}>
         <div>
-          <label className={labelClass}>Email</label>
-          <input
+          <label htmlFor="login-email" className={labelClass}>Email</label>
+          <input id="login-email"
             type="email"
             required
             autoComplete="email"
@@ -97,8 +97,8 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className={labelClass}>Password</label>
-          <PasswordInput
+          <label htmlFor="login-password" className={labelClass}>Password</label>
+          <PasswordInput id="login-password"
             required
             autoComplete="current-password"
             placeholder="Your password"

@@ -115,7 +115,7 @@ export default function ChatThread({ matchId, onActivity }: Props) {
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[75%] px-5 py-3 leading-relaxed ${
+                className={`max-w-[75%] break-words px-5 py-3 leading-relaxed [overflow-wrap:anywhere] ${
                   mine
                     ? "rounded-[1.5rem_1.5rem_0.35rem_1.5rem] bg-ink text-canvas"
                     : "rounded-[1.5rem_1.5rem_1.5rem_0.35rem] border border-line bg-card text-ink"
