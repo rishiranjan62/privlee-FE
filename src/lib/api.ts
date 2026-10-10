@@ -29,6 +29,10 @@ import type {
   MatchSummary,
   GiftKey,
   LikeAllowance,
+  PackCatalogue,
+  PaymentCheckout,
+  PaymentStatus,
+  WalletData,
   Message,
   Metrics,
   MessageType,
@@ -522,9 +526,31 @@ export const api = {
     return data;
   },
 
-  async getWallet(): Promise<{ balance: number; transactions: { amount: number; label: string; createdAt: string }[] }> {
-    const { data } = await client.get("/wallet");
+  async getWallet(): Promise<WalletData> {
+    const { data } = await client.get<WalletData>("/wallet");
     return data;
+  },
+
+  async getPacks(): Promise<PackCatalogue> {
+    const { data } = await client.get<PackCatalogue>("/payments/packs");
+    return data;
+  },
+
+  /** Starts a purchase. The server prices it by pack id; only the id is sent. */
+  async startPurchase(packId: string): Promise<PaymentCheckout> {
+    try {
+      const { data } = await client.post<PaymentCheckout>("/payments/orders", { packId });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't start that payment. Please try again."));
+    }
+  },
+
+  /** Asks the server to check an order with the payment provider and add the credits if it was paid. */
+  async confirmPurchase(orderId: string): Promise<PaymentStatus> {
+    const { data } = await client.post<{ status: PaymentStatus }>(`/payments/orders/${encodeURIComponent(orderId)}/confirm`);
+    if (data.status === "PAID") window.dispatchEvent(new Event(WALLET_CHANGED));
+    return data.status;
   },
 
   async getUnreadCount(): Promise<number> {

@@ -479,3 +479,31 @@ export type ReportReason =
   | "UNDERAGE_SUSPICION"
   | "BLACKMAIL_ATTEMPT"
   | "OTHER";
+
+/** A bundle of credits on sale. The server decides the price; this is only what to show. */
+export interface CreditPack {
+  id: string;
+  credits: number;
+  /** Whole rupees. */
+  amountInr: number;
+}
+
+export interface PackCatalogue {
+  /** False until payments are set up on the server; nothing can be bought then. */
+  enabled: boolean;
+  environment: "sandbox" | "production";
+  packs: CreditPack[];
+}
+
+export interface PaymentCheckout {
+  orderId: string;
+  paymentSessionId: string;
+  environment: "sandbox" | "production";
+}
+
+export type PaymentStatus = "CREATED" | "PAID" | "EXPIRED" | "FAILED";
+
+export interface WalletData {
+  balance: number;
+  transactions: { amount: number; label: string; createdAt: string }[];
+}

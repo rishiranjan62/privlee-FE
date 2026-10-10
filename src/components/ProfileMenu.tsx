@@ -101,6 +101,14 @@ export default function ProfileMenu() {
               Your profile
             </Link>
             <Link
+              to="/credits"
+              onClick={() => setOpen(false)}
+              role="menuitem"
+              className="block px-4 py-2.5 text-sm transition hover:bg-white"
+            >
+              Credits
+            </Link>
+            <Link
               to="/blocked"
               onClick={() => setOpen(false)}
               role="menuitem"

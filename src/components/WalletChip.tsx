@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, WALLET_CHANGED } from "../lib/api";
 
 /** The member's credit balance, shown quietly in the header. Renders nothing until it is known. */
@@ -23,13 +24,14 @@ export default function WalletChip() {
   if (balance === null) return null;
 
   return (
-    <span
+    <Link
+      to="/credits"
       title="Your credits"
-      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/60 px-3 py-1 text-sm"
+      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-white/60 px-3 py-1 text-sm transition hover:border-gold"
     >
       <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-[#d4a762] to-[#8f5f26]" />
       <span className="tabular-nums">{balance.toLocaleString()}</span>
       <span className="sr-only">credits</span>
-    </span>
+    </Link>
   );
 }

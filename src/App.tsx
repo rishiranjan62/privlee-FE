@@ -23,6 +23,7 @@ const LikesPage = lazy(() => import("./pages/LikesPage"));
 const BlockedPage = lazy(() => import("./pages/BlockedPage"));
 const MatchesPage = lazy(() => import("./pages/MatchesPage"));
 const MessagesPage = lazy(() => import("./pages/MessagesPage"));
+const CreditsPage = lazy(() => import("./pages/CreditsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const ProfileViewPage = lazy(() => import("./pages/ProfileViewPage"));
 const AdminGuard = lazy(() => import("./admin/AdminGuard"));
@@ -255,6 +256,16 @@ function AppRoutes() {
               <ProtectedRoute>
                 <Layout>
                   <MatchesPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/credits"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CreditsPage />
                 </Layout>
               </ProtectedRoute>
             }

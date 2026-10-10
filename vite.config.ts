@@ -30,6 +30,7 @@ const PRIVATE_PREFIXES = [
   '/messages',
   '/profile',
   '/blocked',
+  '/credits',
   '/chat',
   '/u/',
 ]

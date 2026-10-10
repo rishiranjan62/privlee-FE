@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api, WALLET_CHANGED } from "../lib/api";
 import type { GiftKey, GiftOption } from "../lib/types";
 
@@ -110,7 +111,10 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         <div className="mb-3 rounded-2xl border border-line bg-card p-3">
           <p className="mb-2 px-1 text-xs text-muted">
             Gifts use your credits{balance !== null && <> - you have {balance.toLocaleString()}</>}. Anything
-            typed below is sent as a note.
+            typed below is sent as a note.{" "}
+            <Link to="/credits" className="text-gold hover:underline">
+              Get more credits
+            </Link>
           </p>
           <div className="grid grid-cols-4 gap-2">
             {gifts.map((g) => (
