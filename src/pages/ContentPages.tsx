@@ -2,6 +2,7 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { privacy, terms } from "../lib/legal";
 import { faq, findGuide, guides } from "../lib/siteContent";
 import { usePageMeta } from "../lib/seo";
+import Logo from "../components/Logo";
 import DocumentPage from "./DocumentPage";
 
 /** Terms and Privacy cross-link; everything public links on to the guides. */
@@ -60,8 +61,8 @@ export function GuidesIndexPage() {
   return (
     <div className="landing min-h-screen">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-8">
-        <Link to="/" className="font-display text-3xl font-semibold tracking-wide">
-          Priv<span className="gold-text italic">lee</span>
+        <Link to="/" aria-label="Privlee, home" className="flex items-center">
+          <Logo className="h-12" />
         </Link>
         <Link to="/" className="text-sm text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)]">
           ← Home

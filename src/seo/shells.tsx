@@ -35,9 +35,7 @@ function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="landing min-h-screen">
       <div className="mx-auto max-w-3xl px-6 py-12">
-        <p className="font-display text-3xl font-semibold tracking-wide">
-          Priv<span className="gold-text italic">lee</span>
-        </p>
+        <img src="/brand/privlee-wordmark.svg" alt="Privlee" className="h-12 w-auto" />
         {children}
         <footer className="mt-12 text-sm text-[color:var(--l-muted)]">{NAV}</footer>
       </div>

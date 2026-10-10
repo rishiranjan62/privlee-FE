@@ -1,3 +1,4 @@
+import { API_ORIGIN } from "./apiBase";
 import axios from "axios";
 import type {
   AuthResponse,
@@ -46,7 +47,9 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 };
 
-const client = axios.create({ baseURL: "/api" });
+// withCredentials lets the API's small age-check cookie travel between privlee.com and api.privlee.com
+// (same site, so it is a first-party cookie). The API only allows credentialed requests from the website.
+const client = axios.create({ baseURL: `${API_ORIGIN}/api`, withCredentials: true });
 
 client.interceptors.request.use((config) => {
   const token = tokenStore.get();
@@ -81,6 +84,17 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 export const api = {
+  /** Whether joining currently needs an invite code. */
+  async getSignupConfig(): Promise<{ inviteRequired: boolean }> {
+    try {
+      const { data } = await client.get<{ inviteRequired: boolean }>("/auth/signup-config");
+      return data;
+    } catch {
+      // If we cannot ask, show the field: a code nobody needs is harmless, a missing one blocks sign-up.
+      return { inviteRequired: true };
+    }
+  },
+
   async signup(payload: SignupPayload): Promise<SignupResult> {
     try {
       const { data } = await client.post<SignupResult>("/auth/signup", payload);

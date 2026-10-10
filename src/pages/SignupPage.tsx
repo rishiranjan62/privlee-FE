@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { terms } from "../lib/legal";
@@ -49,6 +49,12 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pseudonym, setPseudonym] = useState("");
+  // Only while sign-up is closed does the server want a code; asked of it, not assumed.
+  const [inviteRequired, setInviteRequired] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  useEffect(() => {
+    api.getSignupConfig().then((c) => setInviteRequired(c.inviteRequired));
+  }, []);
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState<Gender>("FEMALE");
   const [lookingFor, setLookingFor] = useState<LookingFor>("AFFAIR");
@@ -116,6 +122,7 @@ export default function SignupPage() {
         city,
         acceptedTerms: accepted,
         termsVersion: terms.updated,
+        inviteCode: inviteRequired ? inviteCode.trim() : undefined,
       };
       if (!googleIdToken) {
         // The optional answers travel with the account details: there is no token to save them
@@ -267,6 +274,20 @@ export default function SignupPage() {
         >
           {step === 0 && (
             <>
+              {inviteRequired && (
+                <div>
+                  <label className={labelClass}>Invite code</label>
+                  <input
+                    placeholder="Sign-up is by invitation for now"
+                    required
+                    maxLength={64}
+                    autoComplete="off"
+                    value={inviteCode}
+                    onChange={(e) => setInviteCode(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              )}
               <div>
                 <label className={labelClass}>Pseudonym</label>
                 <input

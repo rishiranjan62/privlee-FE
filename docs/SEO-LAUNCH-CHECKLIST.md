@@ -16,15 +16,15 @@ real domain.
 
 ## 1. Build for production
 
+The domain is **privlee.com** (bare, no `www`; make `www` redirect to it). Its address is set in
+`.env.production`, which `npm run build` reads on its own, so nothing needs to be typed:
+
 ```
-VITE_SITE_URL=https://yourdomain.com \
-VITE_GOOGLE_SITE_VERIFICATION=<code from Search Console> \
-VITE_BING_SITE_VERIFICATION=<code from Bing Webmaster Tools> \
 npm run build
 ```
 
-All three are optional. Without `VITE_SITE_URL` there is no sitemap and no canonical links (rather
-than wrong ones).
+Add the Search Console / Bing codes to `.env.production` when you have them:
+`VITE_GOOGLE_SITE_VERIFICATION=...` and `VITE_BING_SITE_VERIFICATION=...`.
 
 ## 2. Host it so crawlers get the pre-built pages
 

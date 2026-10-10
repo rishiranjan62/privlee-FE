@@ -46,6 +46,8 @@ const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;
  */
 function seoOutput(env: Record<string, string>): Plugin {
   const base = env.VITE_SITE_URL?.replace(/\/$/, '')
+  // Anything but "open" keeps the site out of search: nothing to crawl, nothing to list.
+  const open = env.VITE_SITE_MODE === 'open'
   const verification = [
     env.VITE_GOOGLE_SITE_VERIFICATION &&
       `<meta name="google-site-verification" content="${escapeAttr(env.VITE_GOOGLE_SITE_VERIFICATION)}" />`,
@@ -60,16 +62,18 @@ function seoOutput(env: Record<string, string>): Plugin {
       order: 'post',
       async handler(_options, bundle) {
         // --- robots.txt and sitemap.xml
-        const robots = [
-          'User-agent: *',
-          ...PUBLIC_PATHS.map((p) => `Allow: ${p}$`),
-          ...PRIVATE_PREFIXES.map((p) => `Disallow: ${p}`),
-          ...(base ? ['', `Sitemap: ${base}/sitemap.xml`] : []),
-          '',
-        ].join('\n')
+        const robots = open
+          ? [
+              'User-agent: *',
+              ...PUBLIC_PATHS.map((p) => `Allow: ${p}$`),
+              ...PRIVATE_PREFIXES.map((p) => `Disallow: ${p}`),
+              ...(base ? ['', `Sitemap: ${base}/sitemap.xml`] : []),
+              '',
+            ].join('\n')
+          : 'User-agent: *\nDisallow: /\n'
         this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots })
 
-        if (base) {
+        if (base && open) {
           const day = new Date().toISOString().slice(0, 10)
           const urls = PUBLIC_PATHS.map(
             (p) => `  <url><loc>${base}${p === '/' ? '/' : p}</loc><lastmod>${day}</lastmod></url>`,
@@ -111,14 +115,22 @@ function seoOutput(env: Record<string, string>): Plugin {
               .replace('<div id="root"></div>', `<div id="root">${shell.body}</div>`)
 
             const extra = [
-              '<meta name="robots" content="index, follow" />',
-              base ? `<link rel="canonical" href="${base}${path}" />` : '',
+              open ? '<meta name="robots" content="index, follow" />' : '<meta name="robots" content="noindex, nofollow" />',
+              open && base ? `<link rel="canonical" href="${base}${path}" />` : '',
+              open && base ? `<meta property="og:url" content="${base}${path}" />` : '',
+              // The picture shown when a link is shared. Needs the real address, so only with VITE_SITE_URL.
+              base ? `<meta property="og:image" content="${base}/brand/og-image.png" />` : '',
+              base ? '<meta property="og:image:width" content="1200" />' : '',
+              base ? '<meta property="og:image:height" content="630" />' : '',
+              base ? `<meta name="twitter:image" content="${base}/brand/og-image.png" />` : '',
               ...verification,
               shell.jsonLd ? `<script type="application/ld+json">${JSON.stringify(shell.jsonLd)}</script>` : '',
             ].filter(Boolean)
-            // The site-wide "WebSite" description belongs on the home page only.
+            // The site-wide "WebSite" description belongs on the home page only; there it also names the address.
+            if (path === '/' && base) html = html.replace('"name": "Privlee",', `"name": "Privlee",\n        "url": "${base}/",`)
             if (path !== '/') html = html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '')
             html = html.replace('</head>', `    ${extra.join('\n    ')}\n  </head>`)
+            if (base) html = html.replace('<meta name="twitter:card" content="summary" />', '<meta name="twitter:card" content="summary_large_image" />')
 
             if (path === '/') index.source = html
             else this.emitFile({ type: 'asset', fileName: `${path.slice(1)}/index.html`, source: html })

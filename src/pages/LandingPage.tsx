@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Reveal, RotatingWord, SpotCard, useScrollProgress } from "../components/landing";
 import { pageMeta } from "../lib/pageMeta";
+import Logo from "../components/Logo";
 import { usePageMeta } from "../lib/seo";
 
 const marquee = [
@@ -24,10 +25,10 @@ const steps = [
   { n: "03", title: "Connect in private", body: "Say hello, match, and talk, on terms you control." },
 ];
 
-function Logo() {
+function HomeLink() {
   return (
-    <Link to="/" className="font-display text-3xl font-semibold tracking-wide text-[color:var(--l-ink)]">
-      Priv<span className="gold-text italic">lee</span>
+    <Link to="/" aria-label="Privlee, home" className="flex items-center">
+      <Logo className="h-12" />
     </Link>
   );
 }
@@ -72,7 +73,7 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
-          <Logo />
+          <HomeLink />
           <nav className="flex items-center gap-7 text-sm">
             <a href="#privacy" className="hidden text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)] sm:block">
               Privacy
@@ -292,7 +293,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-[color:var(--l-line)]">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-sm text-[color:var(--l-muted)] sm:flex-row">
-          <Logo />
+          <HomeLink />
           <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             <span>© {new Date().getFullYear()} Privlee. For adults 18+.</span>
             <Link to="/terms" className="transition hover:text-[color:var(--l-ink)]">

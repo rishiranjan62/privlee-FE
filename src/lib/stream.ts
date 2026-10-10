@@ -1,4 +1,5 @@
 import { tokenStore } from "./api";
+import { API_ORIGIN } from "./apiBase";
 import type { NotificationType } from "./types";
 
 export interface StreamEvent {
@@ -12,8 +13,8 @@ type Listener = (event: StreamEvent) => void;
 const RECONNECT_MS = 3000;
 
 /** Staff and members have separate push channels; the member one refuses admins outright. */
-export const MEMBER_STREAM = "/api/notifications/stream";
-export const ADMIN_STREAM = "/api/admin/notifications/stream";
+export const MEMBER_STREAM = `${API_ORIGIN}/api/notifications/stream`;
+export const ADMIN_STREAM = `${API_ORIGIN}/api/admin/notifications/stream`;
 
 /**
  * Server-sent events, consumed with fetch rather than EventSource.

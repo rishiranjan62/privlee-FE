@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import NotificationBell from "../components/NotificationBell";
+import Logo from "../components/Logo";
 import AdminProfileMenu from "./AdminProfileMenu";
 import { usePageMeta } from "../lib/seo";
 import { useLocation } from "react-router-dom";
@@ -49,8 +50,8 @@ export default function AdminLayout({ me, children }: { me: AdminMe; children: R
       <header className="bg-ink text-canvas">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-5 py-3">
           <div className="flex items-center gap-8">
-            <span className="font-display text-xl font-semibold tracking-wide">
-              Privlee <span className="ml-1 rounded bg-gold px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-white">Admin</span>
+            <span className="flex items-center gap-2 font-display text-xl font-semibold tracking-wide">
+              <Logo variant="dark" className="h-9" /> <span className="ml-1 rounded bg-gold px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-white">Admin</span>
             </span>
             <nav className="flex gap-1">
               {links.map((l) => (

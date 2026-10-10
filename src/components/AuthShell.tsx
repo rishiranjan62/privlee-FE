@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Logo from "./Logo";
 import { Link } from "react-router-dom";
 
 export { inputClass, labelClass, primaryBtn } from "../lib/ui";
@@ -70,8 +71,8 @@ export default function AuthShell({ children }: { children: ReactNode }) {
           <div className="drift absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-[#f2c4b3]/60 blur-3xl" style={{ animationDelay: "-6s" }} />
         </div>
         <div className="flex items-center justify-between">
-          <Link to="/" className="font-display text-3xl font-semibold tracking-wide">
-            Priv<span className="gold-text italic">lee</span>
+          <Link to="/" aria-label="Privlee, home" className="flex items-center">
+            <Logo className="h-12" />
           </Link>
           <Link to="/" className="text-sm text-[color:var(--l-muted)] transition hover:text-[color:var(--l-ink)]">
             ← Back

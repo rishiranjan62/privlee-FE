@@ -4,6 +4,7 @@ import { isAdminAccount } from "../lib/adminStatus";
 import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import { usePageMeta } from "../lib/seo";
+import Logo from "./Logo";
 import PanicButton from "./PanicButton";
 import NotificationBell from "./NotificationBell";
 import ProfileMenu from "./ProfileMenu";
@@ -82,8 +83,8 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
 
       <header className="sticky top-0 z-40 border-b border-line/70 bg-canvas/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
-          <NavLink to="/discover" className="font-display text-2xl font-semibold tracking-wide">
-            Priv<span className="gold-text italic">lee</span>
+          <NavLink to="/discover" aria-label="Privlee, home" className="flex items-center">
+            <Logo className="h-10" />
           </NavLink>
 
           <nav className="flex items-center gap-1">

@@ -204,7 +204,7 @@ export const privacy: LegalDocument = {
     {
       heading: "Keeping your information safe",
       body: [
-        "Passwords are stored in scrambled form. Photos are only shown through short-lived links tied to the person looking, and the blurred copy of a photo is made on our servers, so an unblurred picture is never sent to someone who is not allowed to see it. No system is perfectly safe, but we take care to protect what you give us.",
+        "Passwords are stored in scrambled form. Photos are kept in private storage with our cloud storage provider, Cloudflare, and are only shown through short-lived links tied to the person looking, and the blurred copy of a photo is made on our servers, so an unblurred picture is never sent to someone who is not allowed to see it. No system is perfectly safe, but we take care to protect what you give us.",
       ],
     },
     {

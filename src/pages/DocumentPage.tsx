@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { LegalDocument } from "../lib/legal";
+import Logo from "../components/Logo";
 import { usePageMeta } from "../lib/seo";
 
 export interface RelatedLink {
@@ -42,8 +43,8 @@ export default function DocumentPage({ doc, description, path, related = [], jso
   return (
     <div className="landing min-h-screen">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-8">
-        <Link to="/" className="font-display text-3xl font-semibold tracking-wide">
-          Priv<span className="gold-text italic">lee</span>
+        <Link to="/" aria-label="Privlee, home" className="flex items-center">
+          <Logo className="h-12" />
         </Link>
         <button
           onClick={() => (canGoBack ? navigate(-1) : navigate("/"))}

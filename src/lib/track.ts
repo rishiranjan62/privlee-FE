@@ -5,6 +5,8 @@
  * last visit*, only so the very first view of each day can be flagged as a new visitor - there is no
  * visitor id, no cookie, and nothing that could link two visits together on the server.
  */
+import { API_ORIGIN } from "./apiBase";
+
 export type TrackedPage = "landing" | "login" | "signup" | "verify" | "content" | "app";
 
 const LAST_VISIT_KEY = "pv_last_day";
@@ -48,7 +50,7 @@ export function trackView(pathname: string): void {
   const page = pageFor(pathname);
   if (!page || pathname === lastTracked) return;
   lastTracked = pathname;
-  fetch("/api/track", {
+  fetch(`${API_ORIGIN}/api/track`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

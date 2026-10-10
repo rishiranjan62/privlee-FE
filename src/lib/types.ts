@@ -98,6 +98,8 @@ export interface SignupPayload extends Partial<ProfileExtras> {
   acceptedTerms: boolean;
   /** Which version of the terms they were shown (its last-updated date). */
   termsVersion: string;
+  /** Needed only while sign-up is closed. */
+  inviteCode?: string;
 }
 
 /** Email signups return no token: the address has to be verified before anyone can sign in. */

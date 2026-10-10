@@ -5,6 +5,13 @@ import { useEffect } from "react";
  * VITE_SITE_URL when building for production; without it, canonical links are simply left out
  * rather than pointing somewhere wrong.
  */
+/**
+ * "open" lets search engines list the public pages; anything else (the default) keeps the whole site
+ * out of search results, whatever each page asks for. Flip it with VITE_SITE_MODE=open when the site
+ * is ready to be found.
+ */
+const SITE_OPEN = import.meta.env.VITE_SITE_MODE === "open";
+
 const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined)?.replace(/\/$/, "");
 
 interface PageMeta {
@@ -65,8 +72,8 @@ export function usePageMeta({ title, description, index, path, jsonLd }: PageMet
   useEffect(() => {
     document.title = title;
     if (description) setMeta("description", description);
-    setMeta("robots", index ? "index, follow" : "noindex, nofollow");
-    setCanonical(index && SITE_URL && path !== undefined ? SITE_URL + path : null);
+    setMeta("robots", index && SITE_OPEN ? "index, follow" : "noindex, nofollow");
+    setCanonical(index && SITE_OPEN && SITE_URL && path !== undefined ? SITE_URL + path : null);
     setJsonLd(jsonLd);
     // The content is constant per page, so the effect runs once per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
