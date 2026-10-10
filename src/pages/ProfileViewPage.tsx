@@ -3,7 +3,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import ProfileActionsMenu from "../components/ProfileActionsMenu";
 import { useStreamEvent } from "../context/StreamContext";
+import LikeAllowanceNote from "../components/LikeAllowanceNote";
+import { paidLikeQuestion, useLikeAllowance } from "../lib/useLikeAllowance";
 import { tintFor } from "../lib/avatar";
+import { inputClass } from "../lib/ui";
 import { cardClass } from "../lib/ui";
 import {
   availabilityLabels,
@@ -60,6 +63,14 @@ export default function ProfileViewPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [likeError, setLikeError] = useState<string | null>(null);
+  const allowance = useLikeAllowance();
+  // Writing to someone you have not matched with: what it costs, and the note being written.
+  const [startCost, setStartCost] = useState<number | null>(null);
+  const [composing, setComposing] = useState(false);
+  const [note, setNote] = useState("");
+  const [messaging, setMessaging] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   const [askState, setAskState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [matched, setMatched] = useState(false);
 
@@ -101,8 +112,28 @@ export default function ProfileViewPage() {
     }
   }
 
+  useEffect(() => {
+    api.getStartPricing().then((p) => setStartCost(p.textCost)).catch(() => setStartCost(null));
+  }, []);
+
+  async function sendNote() {
+    if (!userId || messaging || !note.trim()) return;
+    setMessaging(true);
+    setMessageError(null);
+    try {
+      const started = await api.messageMember(userId, note.trim());
+      navigate(`/messages/${started.matchId}`);
+    } catch (err) {
+      setMessageError(err instanceof Error ? err.message : "That message didn't send.");
+      setMessaging(false);
+    }
+  }
+
   async function sayHello() {
     if (!userId) return;
+    const question = paidLikeQuestion(allowance);
+    if (question && !window.confirm(question)) return;
+    setLikeError(null);
     setActing(true);
     try {
       const result = await api.like(userId);
@@ -111,7 +142,8 @@ export default function ProfileViewPage() {
         return;
       }
       navigate("/discover");
-    } catch {
+    } catch (err) {
+      setLikeError(err instanceof Error ? err.message : "That like didn't go through.");
       setActing(false);
     }
   }
@@ -154,7 +186,7 @@ export default function ProfileViewPage() {
         <ProfileActionsMenu
           userId={profile.userId}
           pseudonym={profile.pseudonym}
-          matchId={profile.matchId}
+          matchId={profile.matchId ?? profile.conversationId}
         />
       </div>
 
@@ -261,6 +293,53 @@ export default function ProfileViewPage() {
           </Link>
         </div>
       ) : (
+        <>
+        {!profile.matchId && <LikeAllowanceNote allowance={allowance} />}
+        {likeError && (
+          <p role="alert" className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 px-5 py-3 text-sm text-danger">
+            {likeError}
+          </p>
+        )}
+        {composing && !profile.matchId && !profile.conversationId && (
+          <div className={`${cardClass} mb-4 p-5`}>
+            <label htmlFor="cold-note" className="mb-2 block text-sm text-muted">
+              Write to {profile.pseudonym}. You haven't matched, so this costs {startCost} credits, and so does each
+              message you send before they reply.
+            </label>
+            <textarea
+              id="cold-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={2000}
+              rows={3}
+              className={inputClass}
+              placeholder="Say something kind..."
+            />
+            {messageError && (
+              <p role="alert" className="mt-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger">
+                {messageError}{" "}
+                <Link to="/credits" className="underline">
+                  Get credits
+                </Link>
+              </p>
+            )}
+            <div className="mt-3 flex gap-3">
+              <button
+                onClick={sendNote}
+                disabled={messaging || !note.trim()}
+                className="rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-canvas transition hover:bg-gold disabled:opacity-50"
+              >
+                {messaging ? "Sending..." : `Send for ${startCost} credits`}
+              </button>
+              <button
+                onClick={() => setComposing(false)}
+                className="rounded-full border border-line bg-white/70 px-5 py-2.5 text-sm text-muted transition hover:border-gold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         <div className="sticky bottom-4 flex flex-wrap gap-3">
           {profile.matchId ? (
             <Link
@@ -279,6 +358,24 @@ export default function ProfileViewPage() {
             <span className="absolute inset-0 -translate-x-full bg-gold transition-transform duration-500 ease-out group-hover:translate-x-0" />
           </button>
           )}
+          {!profile.matchId &&
+            (profile.conversationId ? (
+              <Link
+                to={`/messages/${profile.conversationId}`}
+                className="rounded-full border border-line bg-white/70 px-7 py-3.5 text-ink backdrop-blur transition hover:border-gold"
+              >
+                Open conversation
+              </Link>
+            ) : (
+              startCost !== null && (
+                <button
+                  onClick={() => setComposing((v) => !v)}
+                  className="rounded-full border border-line bg-white/70 px-7 py-3.5 text-ink backdrop-blur transition hover:border-gold"
+                >
+                  Message · {startCost} credits
+                </button>
+              )
+            ))}
           <button
             onClick={goBack}
             className="rounded-full border border-line bg-white/70 px-7 py-3.5 text-muted backdrop-blur transition hover:border-danger hover:text-danger"
@@ -286,6 +383,7 @@ export default function ProfileViewPage() {
             Not now
           </button>
         </div>
+        </>
       )}
     </div>
   );

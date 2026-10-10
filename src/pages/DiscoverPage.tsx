@@ -3,6 +3,8 @@ import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import type { Profile } from "../lib/types";
 import DiscoverySection from "../components/DiscoverySection";
+import LikeAllowanceNote from "../components/LikeAllowanceNote";
+import { paidLikeQuestion, useLikeAllowance } from "../lib/useLikeAllowance";
 
 interface Sections {
   online: Profile[];
@@ -16,6 +18,8 @@ export default function DiscoverPage() {
   const [sections, setSections] = useState<Sections | null>(null);
   const [matchToast, setMatchToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [likeError, setLikeError] = useState<string | null>(null);
+  const allowance = useLikeAllowance();
 
   const load = useCallback(() => {
     Promise.all([api.getOnline(), api.getNearby(), api.getNewMembers()])
@@ -53,14 +57,20 @@ export default function DiscoverPage() {
   }
 
   async function handleLike(userId: string) {
+    // A like that costs credits is never sent without asking first.
+    const question = paidLikeQuestion(allowance);
+    if (question && !window.confirm(question)) return;
+    setLikeError(null);
     try {
       const result = await api.like(userId);
       if (result.matched) {
         setMatchToast("It's a match! Say hello in your Matches tab.");
         setTimeout(() => setMatchToast(null), 4000);
       }
-    } catch {
-      // move on regardless - a failed like shouldn't block browsing
+    } catch (err) {
+      // Left on screen, since it was not liked: out of free likes and short of credits, for example.
+      setLikeError(err instanceof Error ? err.message : "That like didn't go through.");
+      return;
     }
     removeEverywhere(userId);
   }
@@ -85,6 +95,14 @@ export default function DiscoverPage() {
           Someone worth <span className="gold-text italic">knowing.</span>
         </h1>
       </header>
+
+      <LikeAllowanceNote allowance={allowance} />
+
+      {likeError && (
+        <p role="alert" className="mb-8 rounded-2xl border border-danger/30 bg-danger/10 px-5 py-3 text-sm text-danger">
+          {likeError}
+        </p>
+      )}
 
       {matchToast && (
         <div className="rise mb-8 flex items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 px-5 py-4 text-sm text-ink">

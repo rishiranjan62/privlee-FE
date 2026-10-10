@@ -28,6 +28,12 @@ import type {
   GiftOption,
   MatchSummary,
   GiftKey,
+  LikeAllowance,
+  MessagePricing,
+  PackCatalogue,
+  PaymentCheckout,
+  PaymentStatus,
+  WalletData,
   Message,
   Metrics,
   MessageType,
@@ -75,6 +81,11 @@ client.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/** Fired on window whenever the member's credits change, so the header can refresh. */
+export const WALLET_CHANGED = "privlee:wallet-changed";
+/** Fired when a like is sent, so the daily allowance shown on screen is looked up again. */
+export const LIKE_SENT = "privlee:like-sent";
 
 function errorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -140,6 +151,26 @@ export const api = {
   /** Always succeeds from the caller's point of view - the server never says whether the email exists. */
   async resendVerification(email: string): Promise<void> {
     await client.post("/auth/resend-verification", { email });
+  },
+
+  /**
+   * Asks for a reset link. The server answers the same whatever the address, and only emails one to an
+   * address that has an account, so a success here says nothing about whether it did.
+   */
+  async forgotPassword(email: string): Promise<void> {
+    try {
+      await client.post("/auth/forgot-password", { email });
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't do that just now. Please try again."));
+    }
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    try {
+      await client.post("/auth/reset-password", { token, newPassword });
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't change your password. Please try again."));
+    }
   },
 
   async getAdminMetrics(): Promise<Metrics> {
@@ -284,7 +315,19 @@ export const api = {
   },
 
   async like(userId: string): Promise<{ matched: boolean; matchId: string | null }> {
-    const { data } = await client.post(`/likes/${userId}`);
+    try {
+      const { data } = await client.post(`/likes/${userId}`);
+      // An extra like spends credits, and every like uses up some of today's allowance.
+      window.dispatchEvent(new Event(LIKE_SENT));
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That like didn't go through. Please try again."));
+    }
+  },
+
+  async getLikeAllowance(): Promise<LikeAllowance> {
+    const { data } = await client.get<LikeAllowance>("/likes/allowance");
     return data;
   },
 
@@ -489,13 +532,69 @@ export const api = {
     matchId: string,
     payload: { content?: string; type?: MessageType; gift?: GiftKey },
   ): Promise<Message> {
-    const { data } = await client.post<Message>(`/matches/${matchId}/messages`, payload);
+    try {
+      const { data } = await client.post<Message>(`/matches/${matchId}/messages`, payload);
+      // Gifts, and texts in a conversation someone paid to start, spend credits.
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That didn't send. Please try again."));
+    }
+  },
+
+  /** What opening a conversation with someone you have not matched with costs. */
+  async getStartPricing(): Promise<MessagePricing> {
+    const { data } = await client.get<MessagePricing>("/conversations/start-pricing");
     return data;
+  },
+
+  /** What the next text costs in this conversation: 0 in a real match, or once they have written back. */
+  async getMessagePricing(matchId: string): Promise<MessagePricing> {
+    const { data } = await client.get<MessagePricing>(`/matches/${matchId}/messages/pricing`);
+    return data;
+  },
+
+  /** Writes to someone you have not matched with. Costs credits; returns the conversation that now exists. */
+  async messageMember(userId: string, content: string): Promise<{ matchId: string; message: Message }> {
+    try {
+      const { data } = await client.post<{ matchId: string; message: Message }>(`/conversations/start/${userId}`, { content });
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That message didn't send. Please try again."));
+    }
   },
 
   async getConversations(): Promise<Conversation[]> {
     const { data } = await client.get<Conversation[]>("/conversations");
     return data;
+  },
+
+  async getWallet(): Promise<WalletData> {
+    const { data } = await client.get<WalletData>("/wallet");
+    return data;
+  },
+
+  async getPacks(): Promise<PackCatalogue> {
+    const { data } = await client.get<PackCatalogue>("/payments/packs");
+    return data;
+  },
+
+  /** Starts a purchase. The server prices it by pack id; only the id is sent. */
+  async startPurchase(packId: string): Promise<PaymentCheckout> {
+    try {
+      const { data } = await client.post<PaymentCheckout>("/payments/orders", { packId });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "We couldn't start that payment. Please try again."));
+    }
+  },
+
+  /** Asks the server to check an order with the payment provider and add the credits if it was paid. */
+  async confirmPurchase(orderId: string): Promise<PaymentStatus> {
+    const { data } = await client.post<{ status: PaymentStatus }>(`/payments/orders/${encodeURIComponent(orderId)}/confirm`);
+    if (data.status === "PAID") window.dispatchEvent(new Event(WALLET_CHANGED));
+    return data.status;
   },
 
   async getUnreadCount(): Promise<number> {

@@ -138,7 +138,7 @@ export const privacy: LegalDocument = {
     {
       heading: "What we do not collect",
       body: [
-        "We do not use advertising or tracking cookies. When someone visits our website, we count page views without recording who they are: no IP address, no device identifier and no cookie is stored for this. If you choose to sign in with Google, Google\u2019s own sign-in button may set its own cookies, under Google\u2019s privacy policy. The only cookie we set ourselves is a small one that remembers a failed age check for seven days, so that the same browser cannot immediately try again with a different date of birth. It holds nothing about you. We do not sell your information, and we do not share it with advertisers.",
+        "We do not use advertising or tracking cookies. When someone visits our website, we count page views without recording who they are: no IP address, no device identifier and no cookie is stored for this. We do work out a rough location (the country, and sometimes the state and city) from the connection at that moment, and we keep only the name of that place as part of a count, never together with anything that could identify you. If you choose to sign in with Google, Google\u2019s own sign-in button may set its own cookies, under Google\u2019s privacy policy. The only cookie we set ourselves is a small one that remembers failed age checks for one day: the first mistake is forgiven, but after a second the same browser cannot keep trying different dates of birth. It holds nothing about you. We do not sell your information, and we do not share it with advertisers.",
       ],
     },
     {

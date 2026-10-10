@@ -26,6 +26,7 @@ export default function LoginPage() {
   const [params] = useSearchParams();
   const expired = params.get("expired") === "1";
   const deleted = params.get("deleted") === "1";
+  const justReset = params.get("reset") === "1";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -69,7 +70,9 @@ export default function LoginPage() {
         <p className="mt-3 text-[color:var(--l-muted)]">
           {deleted
             ? "Your account has been deleted. Thank you for having been here - you're welcome back any time."
-            : expired
+            : justReset
+              ? "Your password has been changed. Sign in with the new one."
+              : expired
               ? "Your session timed out for safety. Sign in to carry on."
               : "Discreet by design. Sign in to pick up where you left off."}
         </p>
@@ -103,6 +106,11 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
           />
+          <p className="mt-2 text-right text-sm">
+            <Link to="/forgot-password" className="text-[color:var(--l-muted)] hover:text-[color:var(--l-gold)] hover:underline">
+              Forgot password?
+            </Link>
+          </p>
         </div>
         {error && (
           <p role="alert" className="rounded-xl border border-[#e7c1bd] bg-[#fbeceb] px-4 py-3 text-sm text-[#a2453d]">

@@ -67,6 +67,8 @@ export interface Profile extends ProfileExtras {
   photoAccess: PhotoAccessStatus | null;
   /** Set when you and this person have matched. */
   matchId: string | null;
+  /** Any conversation with this person, including one someone paid to start. */
+  conversationId: string | null;
   /** Only present on your own profile: whether you already have a password of your own. */
   passwordSet: boolean | null;
 }
@@ -173,6 +175,10 @@ export interface Traffic {
   byPlatform: TrafficSplit[];
   byPage: TrafficSplit[];
   byReferrer: TrafficSplit[];
+  /** Countries by name; "Unknown" where the place could not be worked out. */
+  byCountry: TrafficSplit[];
+  /** "City, State, Country", only for visits where the city was available. */
+  byCity: TrafficSplit[];
   funnel: { landingViews: number; signupViews: number; newMembers: number };
 }
 
@@ -434,6 +440,16 @@ export interface AdminPhoto {
   ownerState: string | null;
 }
 
+/** Today's free likes. Every member has a limit; the number depends on gender. */
+export interface LikeAllowance {
+  limited: boolean;
+  limit: number | null;
+  remaining: number | null;
+  /** What one more like costs, in credits, once the free ones are used. */
+  extraLikeCost: number | null;
+  resetsAt: string | null;
+}
+
 export interface LikeSummary {
   received: number;
   sent: number;
@@ -469,3 +485,36 @@ export type ReportReason =
   | "UNDERAGE_SUSPICION"
   | "BLACKMAIL_ATTEMPT"
   | "OTHER";
+
+/** A bundle of credits on sale. The server decides the price; this is only what to show. */
+export interface CreditPack {
+  id: string;
+  credits: number;
+  /** Whole rupees. */
+  amountInr: number;
+}
+
+export interface PackCatalogue {
+  /** False until payments are set up on the server; nothing can be bought then. */
+  enabled: boolean;
+  environment: "sandbox" | "production";
+  packs: CreditPack[];
+}
+
+export interface PaymentCheckout {
+  orderId: string;
+  paymentSessionId: string;
+  environment: "sandbox" | "production";
+}
+
+export type PaymentStatus = "CREATED" | "PAID" | "EXPIRED" | "FAILED";
+
+export interface WalletData {
+  balance: number;
+  transactions: { amount: number; label: string; createdAt: string }[];
+}
+
+/** What the next text costs the sender, in credits. 0 when it is free. */
+export interface MessagePricing {
+  textCost: number;
+}

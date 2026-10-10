@@ -16,7 +16,7 @@ function pageFor(pathname: string): TrackedPage | null {
   // Terms, Privacy, the FAQ and the guides: website traffic, but not the landing page.
   if (["/terms", "/privacy", "/faq"].includes(pathname) || pathname.startsWith("/guides")) return "content";
   if (pathname === "/") return "landing";
-  if (pathname.startsWith("/login")) return "login";
+  if (pathname.startsWith("/login") || pathname === "/forgot-password" || pathname === "/reset-password") return "login";
   if (pathname.startsWith("/signup")) return "signup";
   if (pathname.startsWith("/verify-email")) return "verify";
   return "app";
