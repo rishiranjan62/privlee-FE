@@ -434,6 +434,16 @@ export interface AdminPhoto {
   ownerState: string | null;
 }
 
+/** Today's free likes. Every member has a limit; the number depends on gender. */
+export interface LikeAllowance {
+  limited: boolean;
+  limit: number | null;
+  remaining: number | null;
+  /** What one more like costs, in credits, once the free ones are used. */
+  extraLikeCost: number | null;
+  resetsAt: string | null;
+}
+
 export interface LikeSummary {
   received: number;
   sent: number;

@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import ProfileActionsMenu from "../components/ProfileActionsMenu";
 import { useStreamEvent } from "../context/StreamContext";
+import LikeAllowanceNote from "../components/LikeAllowanceNote";
+import { paidLikeQuestion, useLikeAllowance } from "../lib/useLikeAllowance";
 import { tintFor } from "../lib/avatar";
 import { cardClass } from "../lib/ui";
 import {
@@ -60,6 +62,8 @@ export default function ProfileViewPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [likeError, setLikeError] = useState<string | null>(null);
+  const allowance = useLikeAllowance();
   const [askState, setAskState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [matched, setMatched] = useState(false);
 
@@ -103,6 +107,9 @@ export default function ProfileViewPage() {
 
   async function sayHello() {
     if (!userId) return;
+    const question = paidLikeQuestion(allowance);
+    if (question && !window.confirm(question)) return;
+    setLikeError(null);
     setActing(true);
     try {
       const result = await api.like(userId);
@@ -111,7 +118,8 @@ export default function ProfileViewPage() {
         return;
       }
       navigate("/discover");
-    } catch {
+    } catch (err) {
+      setLikeError(err instanceof Error ? err.message : "That like didn't go through.");
       setActing(false);
     }
   }
@@ -261,6 +269,13 @@ export default function ProfileViewPage() {
           </Link>
         </div>
       ) : (
+        <>
+        {!profile.matchId && <LikeAllowanceNote allowance={allowance} />}
+        {likeError && (
+          <p role="alert" className="mb-4 rounded-2xl border border-danger/30 bg-danger/10 px-5 py-3 text-sm text-danger">
+            {likeError}
+          </p>
+        )}
         <div className="sticky bottom-4 flex flex-wrap gap-3">
           {profile.matchId ? (
             <Link
@@ -286,6 +301,7 @@ export default function ProfileViewPage() {
             Not now
           </button>
         </div>
+        </>
       )}
     </div>
   );

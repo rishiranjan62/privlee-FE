@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "../lib/api";
+import { api, WALLET_CHANGED } from "../lib/api";
 import type { GiftKey, GiftOption } from "../lib/types";
 
 const EMOJI = [
@@ -18,11 +18,22 @@ export default function ChatComposer({ matchId, onSend }: Props) {
   const [tray, setTray] = useState<"none" | "emoji" | "gift">("none");
   const [gifts, setGifts] = useState<GiftOption[]>([]);
   const [sending, setSending] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.getGiftCatalogue(matchId).then(setGifts).catch(() => setGifts([]));
   }, [matchId]);
+
+  // The tray shows what they can afford, so look again whenever it opens and after anything they spend.
+  useEffect(() => {
+    if (tray !== "gift") return;
+    const load = () => api.getWallet().then((w) => setBalance(w.balance)).catch(() => setBalance(null));
+    load();
+    window.addEventListener(WALLET_CHANGED, load);
+    return () => window.removeEventListener(WALLET_CHANGED, load);
+  }, [tray]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -30,8 +41,12 @@ export default function ChatComposer({ matchId, onSend }: Props) {
     const content = draft;
     setDraft("");
     setSending(true);
+    setError(null);
     try {
       await onSend({ content, type: "TEXT" });
+    } catch (err) {
+      setDraft(content);
+      setError(err instanceof Error ? err.message : "That didn't send.");
     } finally {
       setSending(false);
     }
@@ -41,8 +56,11 @@ export default function ChatComposer({ matchId, onSend }: Props) {
     if (sending) return;
     setSending(true);
     setTray("none");
+    setError(null);
     try {
       await onSend({ type: "WINK" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That didn't send.");
     } finally {
       setSending(false);
     }
@@ -53,9 +71,14 @@ export default function ChatComposer({ matchId, onSend }: Props) {
     const note = draft.trim();
     setDraft("");
     setSending(true);
-    setTray("none");
+    setError(null);
     try {
       await onSend({ type: "GIFT", gift, content: note || undefined });
+      setTray("none");
+    } catch (err) {
+      // Kept open and the note put back, so they can pick something cheaper without retyping.
+      setDraft(note);
+      setError(err instanceof Error ? err.message : "That didn't send.");
     } finally {
       setSending(false);
     }
@@ -86,7 +109,8 @@ export default function ChatComposer({ matchId, onSend }: Props) {
       {tray === "gift" && (
         <div className="mb-3 rounded-2xl border border-line bg-card p-3">
           <p className="mb-2 px-1 text-xs text-muted">
-            Gifts are free while Privlee is in testing. Anything typed below is sent as a note.
+            Gifts use your credits{balance !== null && <> - you have {balance.toLocaleString()}</>}. Anything
+            typed below is sent as a note.
           </p>
           <div className="grid grid-cols-4 gap-2">
             {gifts.map((g) => (
@@ -94,7 +118,8 @@ export default function ChatComposer({ matchId, onSend }: Props) {
                 key={g.key}
                 type="button"
                 onClick={() => sendGift(g.key)}
-                disabled={sending}
+                disabled={sending || (balance !== null && balance < g.cost)}
+                title={balance !== null && balance < g.cost ? "Not enough credits" : undefined}
                 className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white/70 px-2 py-3 transition hover:border-gold hover:bg-white disabled:opacity-50"
               >
                 <span className="text-2xl">{g.emoji}</span>
@@ -104,6 +129,12 @@ export default function ChatComposer({ matchId, onSend }: Props) {
             ))}
           </div>
         </div>
+      )}
+
+      {error && (
+        <p role="alert" className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
       )}
 
       <form onSubmit={submit} className="flex items-center gap-2">

@@ -8,6 +8,7 @@ import Logo from "./Logo";
 import PanicButton from "./PanicButton";
 import NotificationBell from "./NotificationBell";
 import ProfileMenu from "./ProfileMenu";
+import WalletChip from "./WalletChip";
 
 const navItems = [
   { to: "/discover", label: "Discover" },
@@ -116,6 +117,7 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
           </nav>
 
           <div className="flex items-center gap-2">
+            <WalletChip />
             <NotificationBell />
             <ProfileMenu />
           </div>

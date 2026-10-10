@@ -28,6 +28,7 @@ import type {
   GiftOption,
   MatchSummary,
   GiftKey,
+  LikeAllowance,
   Message,
   Metrics,
   MessageType,
@@ -75,6 +76,11 @@ client.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/** Fired on window whenever the member's credits change, so the header can refresh. */
+export const WALLET_CHANGED = "privlee:wallet-changed";
+/** Fired when a like is sent, so the daily allowance shown on screen is looked up again. */
+export const LIKE_SENT = "privlee:like-sent";
 
 function errorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -284,7 +290,19 @@ export const api = {
   },
 
   async like(userId: string): Promise<{ matched: boolean; matchId: string | null }> {
-    const { data } = await client.post(`/likes/${userId}`);
+    try {
+      const { data } = await client.post(`/likes/${userId}`);
+      // An extra like spends credits, and every like uses up some of today's allowance.
+      window.dispatchEvent(new Event(LIKE_SENT));
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That like didn't go through. Please try again."));
+    }
+  },
+
+  async getLikeAllowance(): Promise<LikeAllowance> {
+    const { data } = await client.get<LikeAllowance>("/likes/allowance");
     return data;
   },
 
@@ -489,12 +507,23 @@ export const api = {
     matchId: string,
     payload: { content?: string; type?: MessageType; gift?: GiftKey },
   ): Promise<Message> {
-    const { data } = await client.post<Message>(`/matches/${matchId}/messages`, payload);
-    return data;
+    try {
+      const { data } = await client.post<Message>(`/matches/${matchId}/messages`, payload);
+      // A gift spends credits, so anything showing the balance should look again.
+      if (payload.type === "GIFT") window.dispatchEvent(new Event(WALLET_CHANGED));
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That didn't send. Please try again."));
+    }
   },
 
   async getConversations(): Promise<Conversation[]> {
     const { data } = await client.get<Conversation[]>("/conversations");
+    return data;
+  },
+
+  async getWallet(): Promise<{ balance: number; transactions: { amount: number; label: string; createdAt: string }[] }> {
+    const { data } = await client.get("/wallet");
     return data;
   },
 
