@@ -55,8 +55,8 @@ export default function ForgotPasswordPage() {
             Enter the email address you signed up with and we'll send you a link to choose a new password.
           </p>
           <div>
-            <label className={labelClass}>Email</label>
-            <input
+            <label htmlFor="forgot-email" className={labelClass}>Email</label>
+            <input id="forgot-email"
               type="email"
               required
               autoComplete="email"

@@ -68,8 +68,8 @@ export default function ResetPasswordPage() {
 
       <form onSubmit={handleSubmit} className="rise mt-8 space-y-5" style={{ animationDelay: "100ms" }}>
         <div>
-          <label className={labelClass}>New password</label>
-          <PasswordInput
+          <label htmlFor="reset-new-password" className={labelClass}>New password</label>
+          <PasswordInput id="reset-new-password"
             required
             autoComplete="new-password"
             placeholder="At least 8 characters"
@@ -79,8 +79,8 @@ export default function ResetPasswordPage() {
           />
         </div>
         <div>
-          <label className={labelClass}>Type it again</label>
-          <PasswordInput
+          <label htmlFor="reset-type-it-again" className={labelClass}>Type it again</label>
+          <PasswordInput id="reset-type-it-again"
             required
             autoComplete="new-password"
             placeholder="The same password"

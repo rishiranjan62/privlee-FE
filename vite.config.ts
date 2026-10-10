@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { createServer, defineConfig, loadEnv, type Plugin } from 'vite'
 // Explicit extension: this file is checked under Node's module rules, which require one.
-import { guides } from './src/lib/siteContent.ts'
+import { faq, guides } from './src/lib/siteContent.ts'
 
 /** The pages search engines may list. Everything else sits behind the sign-in. */
 const PUBLIC_PATHS = [
@@ -65,16 +65,54 @@ function seoOutput(env: Record<string, string>): Plugin {
       order: 'post',
       async handler(_options, bundle) {
         // --- robots.txt and sitemap.xml
+        const rules = [...PUBLIC_PATHS.map((p) => `Allow: ${p}$`), ...PRIVATE_PREFIXES.map((p) => `Disallow: ${p}`)]
+        // AI search engines and assistants that fetch a page when someone asks them to. They are named so their
+        // access is a stated choice, with exactly the same rules as everyone else: the public pages, never the app.
+        const assistants = [
+          'OAI-SearchBot',
+          'ChatGPT-User',
+          'Claude-SearchBot',
+          'Claude-User',
+          'PerplexityBot',
+          'Perplexity-User',
+          'Applebot',
+          'Bingbot',
+          'Googlebot',
+        ]
         const robots = open
           ? [
-              'User-agent: *',
-              ...PUBLIC_PATHS.map((p) => `Allow: ${p}$`),
-              ...PRIVATE_PREFIXES.map((p) => `Disallow: ${p}`),
-              ...(base ? ['', `Sitemap: ${base}/sitemap.xml`] : []),
-              '',
+              ...[...assistants, '*'].flatMap((agent) => [`User-agent: ${agent}`, ...rules, '']),
+              ...(base ? [`Sitemap: ${base}/sitemap.xml`, ''] : []),
             ].join('\n')
           : 'User-agent: *\nDisallow: /\n'
         this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots })
+
+        // A short, plain-text map of the site for AI assistants and agents (https://llmstxt.org).
+        if (base && open) {
+          const link = (title: string, path: string, note: string) => `- [${title}](${base}${path}): ${note}`
+          const llms = [
+            '# Privlee',
+            '',
+            '> Privlee is a private, pseudonym-only space for adults (18+) seeking discreet connection. Members use a chosen pseudonym, photos are blurred until the owner allows someone to see them, and a panic button turns the app into an ordinary notes screen.',
+            '',
+            'Members need an account to browse profiles; the pages below are the public ones. Profiles, messages and the member app are private and are not available to crawlers or agents.',
+            '',
+            '## Start here',
+            link('Home', '/', 'what Privlee is and how it protects privacy'),
+            link('Create a profile', '/signup', 'free sign-up with email or Google; adults 18+ only'),
+            link('Sign in', '/login', 'for existing members'),
+            '',
+            '## Learn more',
+            link('FAQ', '/faq', faq.description),
+            ...guides.map((g: { title: string; slug: string; description: string }) => link(g.title, `/guides/${g.slug}`, g.description)),
+            '',
+            '## Policies',
+            link('Terms of Service', '/terms', 'the rules for using Privlee'),
+            link('Privacy Policy', '/privacy', 'what is collected, how it is used and protected'),
+            '',
+          ].join('\n')
+          this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llms })
+        }
 
         if (base && open) {
           const day = new Date().toISOString().slice(0, 10)
