@@ -339,11 +339,31 @@ export default function AnalyticsPage() {
   );
 }
 
-function SplitTable({ title, rows, empty }: { title: string; rows: TrafficSplit[]; empty: string }) {
+function SplitTable({
+  title,
+  rows,
+  empty,
+  showVisitors = false,
+  note,
+}: {
+  title: string;
+  rows: TrafficSplit[];
+  empty: string;
+  /** Adds a column of visitors (first visits of the day) before the views. */
+  showVisitors?: boolean;
+  note?: string;
+}) {
   const total = rows.reduce((n, r) => n + r.views, 0);
   return (
     <section className="rounded-lg border border-line bg-white p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">{title}</h3>
+      {showVisitors && rows.length > 0 && (
+        <p className="mt-2 flex justify-end gap-6 text-[11px] uppercase tracking-wider text-muted">
+          <span>Visitors</span>
+          <span>Views</span>
+          <span className="w-12" />
+        </p>
+      )}
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-muted">{empty}</p>
       ) : (
@@ -352,6 +372,7 @@ function SplitTable({ title, rows, empty }: { title: string; rows: TrafficSplit[
             {rows.map((r) => (
               <tr key={r.label} className="border-t border-line/60 first:border-t-0">
                 <td className="py-1.5 capitalize">{r.label}</td>
+                {showVisitors && <td className="py-1.5 text-right tabular-nums">{r.visitors.toLocaleString()}</td>}
                 <td className="py-1.5 text-right tabular-nums">{r.views.toLocaleString()}</td>
                 <td className="w-12 py-1.5 text-right tabular-nums text-muted">
                   {total === 0 ? 0 : Math.round((r.views / total) * 100)}%
@@ -361,6 +382,7 @@ function SplitTable({ title, rows, empty }: { title: string; rows: TrafficSplit[
           </tbody>
         </table>
       )}
+      {note && <p className="mt-3 text-xs text-muted">{note}</p>}
     </section>
   );
 }
@@ -369,6 +391,7 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
   if (traffic === null) return <p className="mt-8 text-sm text-muted">Loading traffic...</p>;
   const f = traffic.funnel;
   const empty = traffic.series.every((s) => s.total === 0);
+  const onlyUnknown = traffic.byCountry.length > 0 && traffic.byCountry.every((c) => c.label === "Unknown");
   const rate = (to: number, from: number) => (from === 0 ? "—" : `${Math.round((to / from) * 100)}%`);
 
   return (
@@ -376,7 +399,9 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Traffic</h2>
       <p className="mt-1 text-sm text-muted">
         How many people reach the website and the app. Counted per page view with no cookies, no addresses and
-        nothing that identifies a visitor.
+        nothing that identifies a visitor. A visitor is counted once per browser per day, so someone who comes
+        back on another day counts again. Places are names only (country, and state and city when available),
+        looked up when the page is opened and never stored with anything that identifies the visitor.
       </p>
 
       {empty && (
@@ -428,7 +453,27 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         <SplitTable title="By device" rows={traffic.byPlatform} empty="Nothing yet." />
         <SplitTable title="Pages" rows={traffic.byPage} empty="Nothing yet." />
-        <SplitTable title="Where visitors come from" rows={traffic.byReferrer} empty="Nothing yet." />
+        <SplitTable title="Referring sites" rows={traffic.byReferrer} empty="Nothing yet." />
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <SplitTable
+          title="Visitors by country"
+          rows={traffic.byCountry}
+          empty="Nothing yet."
+          showVisitors
+          note={
+            onlyUnknown
+              ? "Every visit is Unknown. The place comes from Cloudflare, so the API must be behind its proxy (orange cloud)."
+              : undefined
+          }
+        />
+        <SplitTable
+          title="Visitors by city"
+          rows={traffic.byCity}
+          empty="No cities recorded. In Cloudflare, turn on Rules > Settings > Managed Transforms > Add visitor location headers."
+          showVisitors
+        />
       </div>
     </div>
   );
