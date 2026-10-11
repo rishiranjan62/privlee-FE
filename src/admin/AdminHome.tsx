@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import MiniBarChart from "./MiniBarChart";
+import RefreshButton from "./RefreshButton";
 import { genderLabels } from "../lib/labels";
 import type { AppReleasesOverview, Metrics } from "../lib/types";
 
@@ -59,19 +60,38 @@ export default function AdminHome() {
   const [m, setM] = useState<Metrics | null>(null);
   const [app, setApp] = useState<AppReleasesOverview | null>(null);
 
-  useEffect(() => {
-    api.getAdminMetrics().then(setM).catch(() => setM(null));
+  const [busy, setBusy] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+
+  // What is on screen stays while a refresh runs, so the page does not blink empty.
+  const load = useCallback(() => {
+    setBusy(true);
+    const metrics = api
+      .getAdminMetrics()
+      .then((d) => {
+        setM(d);
+        setUpdatedAt(new Date());
+      })
+      .catch(() => {});
     // A side figure: if it cannot be loaded, the tile simply is not shown.
-    api.getAppReleases().then(setApp).catch(() => setApp(null));
+    const releases = api.getAppReleases().then(setApp).catch(() => setApp(null));
+    Promise.all([metrics, releases]).finally(() => setBusy(false));
   }, []);
+
+  useEffect(load, [load]);
 
   if (!m) return <p className="py-10 text-center text-muted">Loading...</p>;
   const t = m.totals;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Overview</h1>
-      <p className="mt-1 text-sm text-muted">Counts only. Nothing here shows anyone's messages, photos or identity.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Overview</h1>
+          <p className="mt-1 text-sm text-muted">Counts only. Nothing here shows anyone's messages, photos or identity.</p>
+        </div>
+        <RefreshButton onClick={load} busy={busy} updatedAt={updatedAt} />
+      </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Tile label="Members" value={t.users} hint={`${t.newUsers7d} joined this week`} to="/admin/users?filter=all" />

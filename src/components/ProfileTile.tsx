@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { tintFor } from "../lib/avatar";
-import { lookingForLabels } from "../lib/labels";
+import { genderLabels, lookingForLabels } from "../lib/labels";
 import type { Profile } from "../lib/types";
 
 interface Props {
@@ -9,9 +9,11 @@ interface Props {
   to?: string;
   actionLabel: string;
   onAction: () => void;
-  /** "danger" is for undoing something, e.g. taking a like back. */
-  actionTone?: "default" | "danger";
+  /** "danger" is for undoing something, e.g. taking a like back; "liked" is the settled look of a like already sent. */
+  actionTone?: "default" | "danger" | "liked";
   disabled?: boolean;
+  /** Say whether the person is a man, a woman... - for lists that mix genders. */
+  showGender?: boolean;
 }
 
 /** The square profile card used by Discover and Likes. */
@@ -22,6 +24,7 @@ export default function ProfileTile({
   onAction,
   actionTone = "default",
   disabled = false,
+  showGender = false,
 }: Props) {
   const photo = profile.photos.find((p) => p.primary) ?? profile.photos[0];
 
@@ -70,14 +73,19 @@ export default function ProfileTile({
           <span className="text-xs font-normal text-white/70">{profile.age}</span>
         </p>
         <p className="truncate text-[11px] leading-tight text-white/70">
+          {showGender && `${genderLabels[profile.gender] ?? profile.gender} · `}
           {profile.city} · {lookingForLabels[profile.lookingFor] ?? profile.lookingFor}
         </p>
 
         <button
           onClick={onAction}
           disabled={disabled}
-          className={`pointer-events-auto mt-2.5 w-full rounded-full bg-white/15 py-2 text-xs font-medium text-white backdrop-blur-md transition disabled:opacity-50 ${
-            actionTone === "danger" ? "hover:bg-danger" : "hover:bg-gold focus-visible:bg-gold"
+          className={`pointer-events-auto mt-2.5 w-full rounded-full py-2 text-xs font-medium text-white backdrop-blur-md transition ${
+            actionTone === "liked"
+              ? "cursor-default bg-gold/80"
+              : `bg-white/15 disabled:opacity-50 ${
+                  actionTone === "danger" ? "hover:bg-danger" : "hover:bg-gold focus-visible:bg-gold"
+                }`
           }`}
         >
           {actionLabel}

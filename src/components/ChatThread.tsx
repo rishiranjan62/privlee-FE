@@ -5,6 +5,7 @@ import { useStreamEvent } from "../context/StreamContext";
 import { useAuth } from "../context/AuthContext";
 import ChatComposer from "./ChatComposer";
 import ChatPicture from "./ChatPicture";
+import ChatVideo from "./ChatVideo";
 import MessageReactions from "./MessageReactions";
 import ReplyQuote from "./ReplyQuote";
 import { GIFT_EMOJI, GIFT_LABELS } from "../lib/labels";
@@ -18,6 +19,7 @@ interface Props {
 
 export default function ChatThread({ matchId, onActivity }: Props) {
   const { userId } = useAuth();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -64,13 +66,19 @@ export default function ChatThread({ matchId, onActivity }: Props) {
 
   // Pushed from the server the instant the other person sends something.
   useStreamEvent((event) => {
-    if (event.type === "MESSAGE" || event.type === "GIFT") {
+    if (event.type === "MESSAGE" || event.type === "GIFT" || event.type === "MESSAGE_DELETED") {
       reload();
     }
   });
 
+  const shownCount = useRef(0);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    shownCount.current = 0; // a different conversation: scroll to its end when it loads
+  }, [matchId]);
+  useEffect(() => {
+    // Only when something new arrived: deleting a message must not throw the reader to the bottom.
+    if (messages.length > shownCount.current) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    shownCount.current = messages.length;
     if (messages.length > 0) {
       // Anything arriving while the thread is open counts as read - and the inbox and the header badge, which were
       // counted when it arrived and so still show it as new, are told to look again.
@@ -96,6 +104,20 @@ export default function ChatThread({ matchId, onActivity }: Props) {
     row.scrollIntoView({ behavior: "smooth", block: "center" });
     row.classList.add("quote-flash");
     window.setTimeout(() => row.classList.remove("quote-flash"), 1400);
+  }
+
+  /** Removes a message. It leaves the screen at once; put back, with the reason, if the server says no. */
+  async function handleDelete(m: Message, scope: "me" | "everyone") {
+    setDeleteError(null);
+    setMessages((prev) => prev.filter((x) => x.id !== m.id));
+    if (replyingTo?.id === m.id) setReplyingTo(null);
+    try {
+      await api.deleteMessage(matchId, m.id, scope);
+      onActivity?.();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "That message couldn't be deleted.");
+      reload();
+    }
   }
 
   /** Leaves or takes back a reaction. Shown at once; put right if the server says no. */
@@ -141,6 +163,15 @@ export default function ChatThread({ matchId, onActivity }: Props) {
         ),
       );
     }
+    if (m.type === "VIDEO") {
+      return withQuote(
+        m.imageUrl ? (
+          <ChatVideo src={m.imageUrl} />
+        ) : (
+          <div className="rounded-2xl border border-line bg-card px-5 py-3 text-sm text-muted">A video</div>
+        ),
+      );
+    }
     if (m.type === "GIFT" && m.gift) {
       return withQuote(
         <div className="rounded-2xl border border-gold/40 bg-gold/10 px-6 py-4 text-center">
@@ -167,7 +198,9 @@ export default function ChatThread({ matchId, onActivity }: Props) {
   }
 
   async function handleSendImage(file: File) {
-    const sent = await api.sendImage(matchId, file, replyingTo?.id);
+    const sent = file.type.startsWith("video/")
+      ? await api.sendVideo(matchId, file, replyingTo?.id)
+      : await api.sendImage(matchId, file, replyingTo?.id);
     setMessages((prev) => [...prev, sent]);
     setReplyingTo(null);
     onActivity?.();
@@ -189,6 +222,7 @@ export default function ChatThread({ matchId, onActivity }: Props) {
                 mine={mine}
                 onReact={(emoji) => handleReact(m, emoji)}
                 onReply={() => setReplyingTo(m)}
+                onDelete={(scope) => handleDelete(m, scope)}
               >
                 {renderBody(m, mine)}
               </MessageReactions>
@@ -198,6 +232,11 @@ export default function ChatThread({ matchId, onActivity }: Props) {
         <div ref={bottomRef} />
       </div>
 
+      {deleteError && (
+        <p role="alert" className="mb-2 rounded-2xl border border-danger/30 bg-danger/10 px-4 py-2 text-sm text-danger">
+          {deleteError}
+        </p>
+      )}
       <ChatComposer
         matchId={matchId}
         onSend={handleSend}

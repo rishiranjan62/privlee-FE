@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, WALLET_CHANGED } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import { prepareChatImage } from "../lib/chatImage";
+import { prepareChatVideo } from "../lib/chatVideo";
 import { previewText } from "./ReplyQuote";
 import type { GiftKey, GiftOption, Message } from "../lib/types";
 
@@ -31,6 +32,11 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
   const [textCost, setTextCost] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const pictureInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  // Shrinking a video takes about as long as the clip, so say how far along it is.
+  const [preparing, setPreparing] = useState<number | null>(null);
+  // The camera button is for phones and tablets; on a computer the file picker already offers the gallery.
+  const hasCamera = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const trayRef = useRef<HTMLDivElement>(null);
 
   // An open tray closes when anything outside it is pressed (the two buttons that open it handle themselves), and on
@@ -135,19 +141,29 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
     }
   }
 
+  /** A picture, GIF or video, from the camera or the gallery. Both are shrunk here first. */
   async function pickPicture(file: File | undefined) {
     if (!file || sending) return;
     setSending(true);
     setTray("none");
     setError(null);
     try {
-      await onSendImage(await prepareChatImage(file));
+      if (file.type.startsWith("video/")) {
+        setPreparing(0);
+        const clip = await prepareChatVideo(file, setPreparing);
+        setPreparing(null);
+        await onSendImage(clip);
+      } else {
+        await onSendImage(await prepareChatImage(file));
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "That picture didn't send.");
+      setError(err instanceof Error ? err.message : "That didn't send.");
     } finally {
+      setPreparing(null);
       setSending(false);
       // So choosing the same file again still counts as a change.
       if (pictureInput.current) pictureInput.current.value = "";
+      if (cameraInput.current) cameraInput.current.value = "";
     }
   }
 
@@ -254,6 +270,12 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
         </div>
       )}
 
+      {preparing !== null && (
+        <p role="status" className="mb-2 rounded-2xl border border-line bg-white/70 px-4 py-2 text-sm text-muted">
+          Getting your video ready... {Math.round(preparing * 100)}%
+        </p>
+      )}
+
       <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -282,19 +304,40 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
         <input
           ref={pictureInput}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           className="hidden"
           onChange={(e) => pickPicture(e.target.files?.[0])}
         />
+        {/* "capture" makes a phone open its camera (photo or video) instead of the gallery. */}
+        <input
+          ref={cameraInput}
+          type="file"
+          accept="image/*,video/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => pickPicture(e.target.files?.[0])}
+        />
+        {hasCamera && (
+          <button
+            type="button"
+            onClick={() => cameraInput.current?.click()}
+            disabled={sending}
+            aria-label="Take a photo or video"
+            title="Take a photo or video"
+            className="shrink-0 rounded-full border border-line bg-white/70 px-3 py-2.5 text-lg leading-none transition hover:border-gold disabled:opacity-50"
+          >
+            📸
+          </button>
+        )}
         <button
           type="button"
           onClick={() => pictureInput.current?.click()}
           disabled={sending}
-          aria-label="Send a picture or GIF"
-          title="Send a picture or GIF"
+          aria-label="Send a picture, GIF or video from your gallery"
+          title="Send a picture, GIF or video"
           className="shrink-0 rounded-full border border-line bg-white/70 px-3 py-2.5 text-lg leading-none transition hover:border-gold disabled:opacity-50"
         >
-          📷
+          🖼️
         </button>
         {textCost === 0 && (
         <button

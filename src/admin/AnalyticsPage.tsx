@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { formatValue } from "../lib/format";
 import { genderLabels } from "../lib/labels";
 import type { Analytics, AnalyticsSeries, Gender, Granularity, Traffic, TrafficSplit } from "../lib/types";
 import TrendChart, { bucketLabel } from "./TrendChart";
+import RefreshButton from "./RefreshButton";
 
 const STEPS: { value: Granularity; label: string; noun: string }[] = [
   { value: "day", label: "Daily", noun: "days" },
@@ -60,6 +61,12 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<Analytics | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [traffic, setTraffic] = useState<Traffic | null>(null);
+  // Bumped by the Refresh button: the two lookups below depend on it, so they run again.
+  const [reloads, setReloads] = useState(0);
+  const lastReloads = useRef(0);
+  const lastTrafficReloads = useRef(0);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const query = useMemo(() => {
     if (count === "custom") return from ? { from, to } : null;
@@ -69,27 +76,33 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!query) return;
     let current = true;
-    setData(null);
+    // A refresh keeps what is on screen until the new numbers arrive; changing the filters starts from "Loading".
+    if (reloads === lastReloads.current) setData(null);
     setFailed(null);
+    setRefreshing(true);
     api
       .getAnalytics(step, query.from, query.to || undefined, gender || undefined, city || undefined)
       .then((d) => {
         if (!current) return;
         setData(d);
         setAreaOptions(d.areaBreakdown);
+        setUpdatedAt(new Date());
       })
-      .catch((e) => current && setFailed(e?.response?.data?.message ?? "Could not load the report."));
+      .catch((e) => current && setFailed(e?.response?.data?.message ?? "Could not load the report."))
+      .finally(() => current && setRefreshing(false));
+    lastReloads.current = reloads;
     return () => {
       current = false;
     };
-  }, [step, query, gender, city]);
+  }, [step, query, gender, city, reloads]);
 
   // Traffic follows the same step and range but is independent of the gender filter: page views
   // are anonymous, so there is no gender to filter them by.
   useEffect(() => {
     if (!query) return;
     let current = true;
-    setTraffic(null);
+    if (reloads === lastTrafficReloads.current) setTraffic(null);
+    lastTrafficReloads.current = reloads;
     api
       .getTraffic(step, query.from, query.to || undefined)
       .then((t) => current && setTraffic(t))
@@ -97,7 +110,7 @@ export default function AnalyticsPage() {
     return () => {
       current = false;
     };
-  }, [step, query]);
+  }, [step, query, reloads]);
 
   function chooseStep(next: Granularity) {
     setStep(next);
@@ -126,13 +139,16 @@ export default function AnalyticsPage() {
             Growth and engagement over time. Counts only; nothing here identifies anyone. Dates are UTC.
           </p>
         </div>
-        <button
-          onClick={download}
-          disabled={!data}
-          className="rounded border border-line bg-white px-4 py-2 text-sm font-medium transition hover:border-gold disabled:opacity-50"
-        >
-          Download CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <RefreshButton onClick={() => setReloads((n) => n + 1)} busy={refreshing} updatedAt={updatedAt} />
+          <button
+            onClick={download}
+            disabled={!data}
+            className="rounded border border-line bg-white px-4 py-2 text-sm font-medium transition hover:border-gold disabled:opacity-50"
+          >
+            Download CSV
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-end gap-4 rounded-lg border border-line bg-white p-4">
@@ -324,9 +340,11 @@ export default function AnalyticsPage() {
           <TrafficSection traffic={traffic} noun={noun} />
 
           <p className="mt-6 text-xs text-muted">
-            Time in the app counts only seconds with the app visible and in use (not idle or in a background
-            tab), averaged over members' active days. It is measured from the day tracking was added, so it reads
-            "—" until members have used the app since.
+            Time counts only seconds with the website or the Android app on screen and in use (not idle, not in the
+            background), averaged over the days a member used that one. A member who used both on a day is in both
+            averages and, once, in the combined one. Time on the website is measured from the day tracking was
+            added; time in the Android app from the first release that reports it, so it reads "—" until members
+            have updated.
           </p>
           <p className="mt-2 text-xs text-muted">
             Active members are people who used the app at least once in the period, counted once each. That
@@ -339,48 +357,95 @@ export default function AnalyticsPage() {
   );
 }
 
+/** Android apps that send people here (the referrer is the app's package name), by a name people know. */
+const APP_NAMES: Record<string, string> = {
+  "com.google.android.gm": "Gmail (app)",
+  "com.google.android.googlequicksearchbox": "Google (app)",
+  "com.google.android.apps.messaging": "Messages (app)",
+  "com.whatsapp": "WhatsApp (app)",
+  "com.instagram.android": "Instagram (app)",
+  "com.facebook.katana": "Facebook (app)",
+  "com.twitter.android": "X (app)",
+  "org.telegram.messenger": "Telegram (app)",
+};
+
+const PLATFORM_NAMES: Record<string, string> = { web: "Website", android: "Android app", ios: "iPhone app" };
+
+function titled(label: string): string {
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/** How a row's name reads. Sites stay as written (a domain is not a sentence), pages and devices are named. */
+function referrerName(label: string): string {
+  if (label === "direct") return "Direct";
+  return APP_NAMES[label] ?? label;
+}
+
+/**
+ * One breakdown card. The list scrolls inside the card past a fixed height, so a long list (every country, every
+ * city) never makes the page grow with the data; the column headings stay put while it scrolls. Columns have fixed
+ * widths and names are cut with "..." (the full name is on hover), so numbers can never run into the next column.
+ */
 function SplitTable({
   title,
+  head,
   rows,
   empty,
   showVisitors = false,
   note,
+  name = (label: string) => label,
 }: {
   title: string;
+  /** The heading over the names, e.g. "Country". */
+  head: string;
   rows: TrafficSplit[];
   empty: string;
   /** Adds a column of visitors (first visits of the day) before the views. */
   showVisitors?: boolean;
   note?: string;
+  name?: (label: string) => string;
 }) {
   const total = rows.reduce((n, r) => n + r.views, 0);
   return (
-    <section className="rounded-lg border border-line bg-white p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">{title}</h3>
-      {showVisitors && rows.length > 0 && (
-        <p className="mt-2 flex justify-end gap-6 text-[11px] uppercase tracking-wider text-muted">
-          <span>Visitors</span>
-          <span>Views</span>
-          <span className="w-12" />
-        </p>
-      )}
+    <section className="flex min-w-0 flex-col rounded-lg border border-line bg-white p-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        {title} {rows.length > 0 && <span className="font-normal normal-case">({rows.length})</span>}
+      </h3>
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-muted">{empty}</p>
       ) : (
-        <table className="mt-3 w-full text-sm">
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.label} className="border-t border-line/60 first:border-t-0">
-                <td className="py-1.5 capitalize">{r.label}</td>
-                {showVisitors && <td className="py-1.5 text-right tabular-nums">{r.visitors.toLocaleString()}</td>}
-                <td className="py-1.5 text-right tabular-nums">{r.views.toLocaleString()}</td>
-                <td className="w-12 py-1.5 text-right tabular-nums text-muted">
-                  {total === 0 ? 0 : Math.round((r.views / total) * 100)}%
-                </td>
+        <div className="mt-3 max-h-80 overflow-y-auto overscroll-contain">
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col />
+              {showVisitors && <col className="w-20" />}
+              <col className="w-16" />
+              <col className="w-14" />
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-white text-[11px] uppercase tracking-wider text-muted">
+              <tr className="border-b border-line">
+                <th className="py-1.5 pr-2 text-left font-medium">{head}</th>
+                {showVisitors && <th className="py-1.5 text-right font-medium">Visitors</th>}
+                <th className="py-1.5 text-right font-medium">Views</th>
+                <th className="py-1.5 text-right font-medium">Share</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.label} className="border-b border-line/60 last:border-b-0">
+                  <td className="truncate py-1.5 pr-2" title={name(r.label)}>
+                    {name(r.label)}
+                  </td>
+                  {showVisitors && <td className="py-1.5 text-right tabular-nums">{r.visitors.toLocaleString()}</td>}
+                  <td className="py-1.5 text-right tabular-nums">{r.views.toLocaleString()}</td>
+                  <td className="py-1.5 text-right tabular-nums text-muted">
+                    {total === 0 ? 0 : Math.round((r.views / total) * 100)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
       {note && <p className="mt-3 text-xs text-muted">{note}</p>}
     </section>
@@ -410,7 +475,7 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
         </p>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
         {traffic.series.map((s) => (
           <div key={s.key} className="rounded-lg border border-line bg-white p-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted">{s.label}</p>
@@ -451,14 +516,15 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <SplitTable title="By device" rows={traffic.byPlatform} empty="Nothing yet." />
-        <SplitTable title="Pages" rows={traffic.byPage} empty="Nothing yet." />
-        <SplitTable title="Referring sites" rows={traffic.byReferrer} empty="Nothing yet." />
+        <SplitTable title="By device" head="Device" rows={traffic.byPlatform} empty="Nothing yet." name={(l) => PLATFORM_NAMES[l] ?? titled(l)} />
+        <SplitTable title="Pages" head="Page" rows={traffic.byPage} empty="Nothing yet." name={titled} />
+        <SplitTable title="Referring sites" head="Source" rows={traffic.byReferrer} empty="Nothing yet." name={referrerName} />
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <SplitTable
           title="Visitors by country"
+          head="Country"
           rows={traffic.byCountry}
           empty="Nothing yet."
           showVisitors
@@ -470,6 +536,7 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
         />
         <SplitTable
           title="Visitors by city"
+          head="City"
           rows={traffic.byCity}
           empty="No cities recorded. In Cloudflare, turn on Rules > Settings > Managed Transforms > Add visitor location headers."
           showVisitors

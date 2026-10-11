@@ -6,6 +6,8 @@ export function previewText(p: ReplyPreview): string {
   switch (p.type) {
     case "IMAGE":
       return `📷 ${p.text.replace(/[\[\]]/g, "") || "Picture"}`;
+    case "VIDEO":
+      return "🎬 Video";
     case "GIFT":
       return `${p.gift ? GIFT_EMOJI[p.gift] : "🎁"} ${p.gift ? GIFT_LABELS[p.gift] : "A gift"}`;
     case "WINK":

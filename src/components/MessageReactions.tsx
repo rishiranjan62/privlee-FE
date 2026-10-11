@@ -8,6 +8,8 @@ interface Props {
   onReact: (emoji: string | null) => void;
   /** Starts a reply to this message. */
   onReply: () => void;
+  /** Deletes it: "me" for your own view, "everyone" (your own messages only) for both of you. */
+  onDelete: (scope: "me" | "everyone") => void;
   children: ReactNode;
 }
 
@@ -16,18 +18,25 @@ interface Props {
  * with a mouse) that opens the row of emotions, and a double-click as the quick heart. What has been left shows as
  * little chips underneath, yours highlighted.
  */
-export default function MessageReactions({ message, mine, onReact, onReply, children }: Props) {
+export default function MessageReactions({ message, mine, onReact, onReply, onDelete, children }: Props) {
   const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false);
+  // Deleting for everyone cannot be undone, so it asks once more.
+  const [confirming, setConfirming] = useState(false);
   const wrapper = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && !more) return;
     const away = (e: MouseEvent) => {
-      if (wrapper.current && !wrapper.current.contains(e.target as Node)) setOpen(false);
+      if (wrapper.current && !wrapper.current.contains(e.target as Node)) {
+        setOpen(false);
+        setMore(false);
+        setConfirming(false);
+      }
     };
     document.addEventListener("mousedown", away);
     return () => document.removeEventListener("mousedown", away);
-  }, [open]);
+  }, [open, more]);
 
   function choose(emoji: string) {
     setOpen(false);
@@ -62,7 +71,58 @@ export default function MessageReactions({ message, mine, onReact, onReply, chil
         >
           ☺
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setMore((m) => !m);
+            setOpen(false);
+            setConfirming(false);
+          }}
+          aria-label="Delete this message"
+          title="Delete"
+          className="shrink-0 rounded-full border border-line bg-white/80 px-2 py-1 text-sm leading-none opacity-0 transition hover:border-danger focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-60"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" />
+          </svg>
+        </button>
       </div>
+
+      {more && (
+        <div
+          role="menu"
+          className={`absolute top-full z-20 mt-1 flex min-w-[11rem] flex-col rounded-2xl border border-line bg-card py-1 text-sm shadow-[0_18px_36px_-18px_rgba(120,80,30,0.5)] ${
+            mine ? "right-0" : "left-0"
+          }`}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMore(false);
+              onDelete("me");
+            }}
+            className="px-4 py-2 text-left transition hover:bg-gold/10"
+          >
+            Delete for me
+          </button>
+          {mine && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                if (!confirming) return setConfirming(true);
+                setMore(false);
+                setConfirming(false);
+                onDelete("everyone");
+              }}
+              className="px-4 py-2 text-left text-danger transition hover:bg-danger/10"
+            >
+              {confirming ? "Tap again to delete for everyone" : "Delete for everyone"}
+            </button>
+          )}
+        </div>
+      )}
 
       {open && (
         <div
