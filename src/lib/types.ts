@@ -71,13 +71,15 @@ export interface Profile extends ProfileExtras {
   conversationId: string | null;
   /** Only present on your own profile: whether you already have a password of your own. */
   passwordSet: boolean | null;
+  /** Only filled in on your own profile: whose profiles you want to see. Empty means everyone. */
+  interestedIn?: Gender[];
 }
 
 export type ProfileUpdate = Pick<
   Profile,
   "lookingFor" | "relationshipStatus" | "city" | "discreetMode"
 > &
-  Partial<ProfileExtras> & { bio: string };
+  Partial<ProfileExtras> & { bio: string; interestedIn?: Gender[] };
 
 export interface AuthResponse {
   accessToken: string;
@@ -88,6 +90,8 @@ export interface AuthResponse {
 }
 
 export interface SignupPayload extends Partial<ProfileExtras> {
+  /** Whose profiles they want to see. Left out or empty means everyone. */
+  interestedIn?: Gender[];
   email: string;
   password: string;
   pseudonym: string;
@@ -227,7 +231,7 @@ export interface GoogleSignupPayload extends Omit<SignupPayload, "email" | "pass
   idToken: string;
 }
 
-export type MessageType = "TEXT" | "WINK" | "GIFT";
+export type MessageType = "TEXT" | "WINK" | "GIFT" | "IMAGE";
 
 export type GiftKey =
   | "ROSE"
@@ -237,13 +241,54 @@ export type GiftKey =
   | "COFFEE"
   | "PERFUME"
   | "CAKE"
-  | "TEDDY";
+  | "TEDDY"
+  | "HEART"
+  | "KISS"
+  | "HUG"
+  | "FIRE"
+  | "STAR"
+  | "SUNFLOWER"
+  | "BALLOON"
+  | "WINE"
+  | "ICE_CREAM"
+  | "CHERRIES"
+  | "CANDLE"
+  | "MOONLIGHT"
+  | "PARTY"
+  | "DIAMOND"
+  | "CROWN"
+  | "RING"
+  | "BLINDFOLD"
+  | "HANDCUFFS"
+  | "SILK_SCARF"
+  | "FEATHER"
+  | "MASK"
+  | "ROOM_KEY"
+  | "HOTEL"
+  | "HEELS"
+  | "LACE"
+  | "OIL"
+  | "DICE"
+  | "PEACH"
+  | "SPICE"
+  | "STRAWBERRIES"
+  | "WHISPER"
+  | "SECRET_NOTE"
+  | "MIDNIGHT"
+  | "SATIN"
+  | "VELVET_GLOVES"
+  | "BUNNY_EARS"
+  | "POTION"
+  | "HOT_TUB"
+  | "DINNER";
 
 export interface GiftOption {
   key: GiftKey;
   label: string;
   emoji: string;
   cost: number;
+  /** In the tray's "Playful" group. */
+  playful?: boolean;
 }
 
 export type NotificationType =
@@ -476,7 +521,27 @@ export interface Message {
   type: MessageType;
   gift: GiftKey | null;
   createdAt: string;
+  /** For a picture: a short-lived link made for this viewer. Null for everything else. */
+  imageUrl?: string | null;
+  /** The reaction you left on this message, and the one they left. Null when there is none. */
+  myReaction?: string | null;
+  theirReaction?: string | null;
+  /** What this message answers, if anything. */
+  replyTo?: ReplyPreview | null;
 }
+
+/** A short view of the message a reply answers: enough to recognise it, never the picture itself. */
+export interface ReplyPreview {
+  id: string;
+  /** True when the quoted message was yours. */
+  mine: boolean;
+  type: MessageType;
+  text: string;
+  gift: GiftKey | null;
+}
+
+/** The emotions that can be left on a message, in the order they are offered. */
+export const REACTIONS = ["❤️", "👍", "😂", "😮", "😢", "🙏", "🔥", "😍"] as const;
 
 export type ReportReason =
   | "FAKE_PROFILE"

@@ -4,7 +4,9 @@ import CityInput from "../components/CityInput";
 import ProfileExtrasFields from "../components/ProfileExtrasFields";
 import PhotoAccessManager from "../components/PhotoAccessManager";
 import PhotoManager from "../components/PhotoManager";
+import InterestedInPicker from "../components/InterestedInPicker";
 import { cardClass, inputClass, labelClass, pillClass } from "../lib/ui";
+import { genderLabels } from "../lib/labels";
 import type { LookingFor, Profile, ProfileExtras, RelationshipStatus } from "../lib/types";
 
 const lookingForOptions: { value: LookingFor; label: string }[] = [
@@ -40,6 +42,8 @@ function editableFingerprint(p: Profile): string {
     p.wantsInConnection ?? "",
     p.discretionLevel,
     [...p.availability].sort(),
+    // Choosing nothing and choosing everyone mean the same thing, so they are not a change.
+    (p.interestedIn ?? []).length === 4 ? [] : [...(p.interestedIn ?? [])].sort(),
   ]);
 }
 
@@ -87,6 +91,7 @@ export default function ProfilePage() {
         relationshipStatus: profile.relationshipStatus,
         city: profile.city,
         discreetMode: profile.discreetMode,
+        interestedIn: profile.interestedIn ?? [],
         interests: profile.interests,
         smoking: profile.smoking,
         drinking: profile.drinking,
@@ -167,6 +172,14 @@ export default function ProfilePage() {
         </div>
 
         <div>
+          <label className={labelClass}>Gender</label>
+          <p className="rounded-full border border-line bg-white/50 px-5 py-3 text-muted" aria-readonly="true">
+            {genderLabels[profile.gender] ?? profile.gender}
+          </p>
+          <p className="mt-2 text-xs text-muted">Your gender is part of how others find you, so it can't be changed.</p>
+        </div>
+
+        <div>
           <label className={labelClass}>City</label>
           <CityInput value={profile.city} onChange={(city) => setProfile({ ...profile, city })} />
         </div>
@@ -201,6 +214,16 @@ export default function ProfilePage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Show me</label>
+          <InterestedInPicker
+            value={profile.interestedIn ?? []}
+            onChange={(interestedIn) => setProfile({ ...profile, interestedIn })}
+            pillClass={pillClass}
+          />
+          <p className="mt-2 text-xs text-muted">Only these profiles appear in Discover. Nobody else can see this choice.</p>
         </div>
       </section>
 

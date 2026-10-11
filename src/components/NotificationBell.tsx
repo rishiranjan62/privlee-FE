@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, UNREAD_CHANGED } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import type { AppNotification } from "../lib/types";
 
@@ -45,6 +45,22 @@ export default function NotificationBell({ staff = false }: { staff?: boolean })
   // Arrives the moment the server has something to say.
   useStreamEvent(refresh);
 
+  // Opening a conversation reads what the bell said about it, so the count is taken again.
+  useEffect(() => {
+    window.addEventListener(UNREAD_CHANGED, refresh);
+    return () => window.removeEventListener(UNREAD_CHANGED, refresh);
+  }, [refresh]);
+
+  async function clearAll() {
+    try {
+      await api.clearNotifications();
+    } catch {
+      return;
+    }
+    setItems([]);
+    setUnread(0);
+  }
+
   useEffect(() => {
     if (!open) return;
     function onClickAway(e: MouseEvent) {
@@ -87,7 +103,7 @@ export default function NotificationBell({ staff = false }: { staff?: boolean })
           />
         </svg>
         {unread > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-semibold text-white">
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[11px] font-bold leading-none text-white ring-2 ring-canvas">
             {unread}
           </span>
         )}
@@ -95,7 +111,14 @@ export default function NotificationBell({ staff = false }: { staff?: boolean })
 
       {open && (
         <div className="fixed inset-x-4 top-[6.75rem] z-50 text-ink overflow-hidden sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-80 rounded-2xl border border-line bg-card shadow-[0_30px_60px_-24px_rgba(120,80,30,0.5)]">
-          <p className="border-b border-line/70 px-4 py-3 font-display text-lg">Notifications</p>
+          <div className="flex items-center justify-between border-b border-line/70 px-4 py-3">
+            <p className="font-display text-lg">Notifications</p>
+            {!staff && items !== null && items.length > 0 && (
+              <button type="button" onClick={clearAll} className="text-xs text-muted transition hover:text-ink">
+                Clear all
+              </button>
+            )}
+          </div>
           {items === null ? (
             <p className="px-4 py-8 text-center text-sm text-muted">Loading...</p>
           ) : items.length === 0 ? (

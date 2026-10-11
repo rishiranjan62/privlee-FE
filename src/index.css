@@ -119,6 +119,28 @@ body {
 }
 .spot:hover::before { opacity: 1; }
 
+/* The moment a quoted message is jumped to. */
+.quote-flash {
+  animation: quote-flash 1.4s ease-out;
+}
+@keyframes quote-flash {
+  0%, 40% { background-color: rgba(168, 118, 58, 0.22); }
+  100% { background-color: transparent; }
+}
+
+/* Pictures in a conversation: not pickable, not selectable, never printed. */
+.no-save {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+@media print {
+  .chat-picture {
+    display: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rise, .rise-soft, .float, .drift, .marquee-track, .photo-unblur, .swap-word, .gold-text { animation: none; }
   .reveal { opacity: 1; transform: none; filter: none; transition: none; }
