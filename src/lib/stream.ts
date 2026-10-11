@@ -11,6 +11,18 @@ export interface StreamEvent {
 type Listener = (event: StreamEvent) => void;
 
 const RECONNECT_MS = 3000;
+/** When the server keeps refusing, wait longer each time (up to a minute) instead of knocking every few seconds. */
+const MAX_BACKOFF_MS = 60_000;
+
+/** Whether the sign-in token has run out, read from its own expiry (no signature check: this only decides what to do next). */
+function tokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
+}
 
 /** Staff and members have separate push channels; the member one refuses admins outright. */
 export const MEMBER_STREAM = `${API_ORIGIN}/api/notifications/stream`;
@@ -35,6 +47,7 @@ class EventStream {
   private retry: ReturnType<typeof setTimeout> | null = null;
   private generation = 0;
   private live = false;
+  private failures = 0;
   private url = MEMBER_STREAM;
 
   subscribe(listener: Listener): () => void {
@@ -69,7 +82,10 @@ class EventStream {
   private scheduleReconnect(generation: number) {
     if (!this.live || generation !== this.generation) return;
     this.clearRetry();
-    this.retry = setTimeout(() => this.connect(generation), RECONNECT_MS);
+    // 3 s after a dropped connection; longer and longer while the server keeps saying no.
+    const wait = Math.min(RECONNECT_MS * 2 ** Math.min(this.failures, 5), MAX_BACKOFF_MS);
+    this.failures++;
+    this.retry = setTimeout(() => this.connect(generation), wait);
   }
 
   private async connect(generation: number) {
@@ -94,10 +110,22 @@ class EventStream {
         controller.abort();
         return;
       }
+      if (response.status === 401 || response.status === 403) {
+        // A token that has run out will never be accepted again: end the session like any other request does, instead
+        // of knocking on the door every few seconds for ever. (A refusal with a token that has not run out is
+        // something else, such as the wrong channel for this account, and is retried as before.)
+        if (tokenExpired(token)) {
+          this.live = false;
+          tokenStore.clear();
+          if (!window.location.pathname.startsWith("/login")) window.location.assign("/login?expired=1");
+          return;
+        }
+      }
       if (!response.ok || !response.body) {
         this.scheduleReconnect(generation);
         return;
       }
+      this.failures = 0;
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
