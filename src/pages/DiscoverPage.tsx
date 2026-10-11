@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
-import type { Profile } from "../lib/types";
+import type { Gender, Profile } from "../lib/types";
 import DiscoverySection from "../components/DiscoverySection";
 import LikeAllowanceNote from "../components/LikeAllowanceNote";
 import { paidLikeQuestion, useLikeAllowance } from "../lib/useLikeAllowance";
@@ -14,12 +14,48 @@ interface Sections {
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
 
+/** Plural, for the filter: "Women (12)". */
+const GENDER_GROUPS: { value: Gender; label: string }[] = [
+  { value: "FEMALE", label: "Women" },
+  { value: "MALE", label: "Men" },
+  { value: "NON_BINARY", label: "Non-binary" },
+  { value: "OTHER", label: "Other" },
+];
+
 export default function DiscoverPage() {
   const [sections, setSections] = useState<Sections | null>(null);
   const [matchToast, setMatchToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [likeError, setLikeError] = useState<string | null>(null);
   const allowance = useLikeAllowance();
+  const [genderFilter, setGenderFilter] = useState<Gender | "ALL">("ALL");
+  // Only someone who asked to see more than one gender needs them told apart; with one chosen there is nothing to sort.
+  const [wantsSeveral, setWantsSeveral] = useState(false);
+  useEffect(() => {
+    api
+      .getMyProfile()
+      .then((me) => setWantsSeveral((me.interestedIn?.length ?? 0) > 1))
+      .catch(() => {});
+  }, []);
+
+  // When what you are shown mixes genders (you asked for men and women, say), say so and let it be sorted.
+  const groups = useMemo(() => {
+    if (!sections || !wantsSeveral) return [];
+    const everyone = new Map<string, Profile>();
+    [...sections.online, ...sections.nearby, ...sections.fresh].forEach((p) => everyone.set(p.userId, p));
+    const counts = GENDER_GROUPS.map((g) => ({
+      ...g,
+      count: [...everyone.values()].filter((p) => p.gender === g.value).length,
+    })).filter((g) => g.count > 0);
+    return counts.length > 1 ? counts : [];
+  }, [sections, wantsSeveral]);
+  const mixed = groups.length > 1;
+  const active = mixed ? genderFilter : "ALL";
+  const shown = useMemo(() => {
+    if (!sections || active === "ALL") return sections;
+    const keep = (list: Profile[]) => list.filter((p) => p.gender === active);
+    return { online: keep(sections.online), nearby: keep(sections.nearby), fresh: keep(sections.fresh) };
+  }, [sections, active]);
 
   const load = useCallback(() => {
     Promise.all([api.getOnline(), api.getNearby(), api.getNewMembers()])
@@ -46,14 +82,11 @@ export default function DiscoverPage() {
     return () => clearInterval(interval);
   }, []);
 
-  function removeEverywhere(userId: string) {
-    setSections((prev) =>
-      prev && {
-        online: prev.online.filter((p) => p.userId !== userId),
-        nearby: prev.nearby.filter((p) => p.userId !== userId),
-        fresh: prev.fresh.filter((p) => p.userId !== userId),
-      },
-    );
+  /** The like went through: the tile stays, and now says so (or offers the conversation, if it made a match). */
+  function markLiked(userId: string, matchId: string | null) {
+    const update = (list: Profile[]) =>
+      list.map((p) => (p.userId === userId ? { ...p, likedByMe: true, matchId: matchId ?? p.matchId } : p));
+    setSections((prev) => prev && { online: update(prev.online), nearby: update(prev.nearby), fresh: update(prev.fresh) });
   }
 
   async function handleLike(userId: string) {
@@ -61,8 +94,10 @@ export default function DiscoverPage() {
     const question = paidLikeQuestion(allowance);
     if (question && !window.confirm(question)) return;
     setLikeError(null);
+    let matchId: string | null = null;
     try {
       const result = await api.like(userId);
+      matchId = result.matchId ?? null;
       if (result.matched) {
         setMatchToast("It's a match! Say hello in your Matches tab.");
         setTimeout(() => setMatchToast(null), 4000);
@@ -72,7 +107,7 @@ export default function DiscoverPage() {
       setLikeError(err instanceof Error ? err.message : "That like didn't go through.");
       return;
     }
-    removeEverywhere(userId);
+    markLiked(userId, matchId);
   }
 
   if (error) {
@@ -83,7 +118,7 @@ export default function DiscoverPage() {
     );
   }
 
-  if (!sections) {
+  if (!sections || !shown) {
     return <p className="py-12 text-center text-muted">Loading profiles...</p>;
   }
 
@@ -114,24 +149,47 @@ export default function DiscoverPage() {
         </div>
       )}
 
+      {mixed && (
+        <div role="group" aria-label="Show" className="mb-10 flex flex-wrap gap-2">
+          {[{ value: "ALL" as const, label: "Everyone", count: null }, ...groups].map((g) => (
+            <button
+              key={g.value}
+              onClick={() => setGenderFilter(g.value)}
+              aria-pressed={active === g.value}
+              className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                active === g.value
+                  ? "border-ink bg-ink text-canvas"
+                  : "border-line bg-white/60 text-muted hover:text-ink"
+              }`}
+            >
+              {g.label}
+              {g.count !== null && <span className="ml-1.5 opacity-70">{g.count}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
       <DiscoverySection
         title="Online now"
         subtitle="Active in the last few minutes"
-        profiles={sections.online}
+        profiles={shown.online}
+        showGender={mixed}
         emptyLabel="No one's online right now - check back soon."
         onLike={handleLike}
       />
       <DiscoverySection
         title="Nearby"
         subtitle="In your city"
-        profiles={sections.nearby}
+        profiles={shown.nearby}
+        showGender={mixed}
         emptyLabel="No one nearby yet."
         onLike={handleLike}
       />
       <DiscoverySection
         title="New here"
         subtitle="Recently joined"
-        profiles={sections.fresh}
+        profiles={shown.fresh}
+        showGender={mixed}
         emptyLabel="No new members yet."
         onLike={handleLike}
       />

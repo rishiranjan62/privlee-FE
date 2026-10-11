@@ -61,6 +61,8 @@ export const tokenStore = {
 const client = axios.create({ baseURL: `${API_ORIGIN}/api`, withCredentials: true });
 
 client.interceptors.request.use((config) => {
+  // Lets the server's log tell the website from the Android app.
+  config.headers["X-Privlee-Client"] = "web";
   const token = tokenStore.get();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -69,7 +71,17 @@ client.interceptors.request.use((config) => {
 });
 
 client.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Sliding session: while someone keeps using the site the server hands back a fresh token, so only real
+    // inactivity signs them out. Swapped in only if the token that made this request is still the current one -
+    // a response arriving after sign-out must not bring the session back.
+    const renewed = response.headers["x-refreshed-token"];
+    const sent = response.config.headers?.Authorization;
+    if (renewed && sent === `Bearer ${tokenStore.get()}`) {
+      tokenStore.set(renewed);
+    }
+    return response;
+  },
   (error) => {
     // An expired or rejected JWT comes back as 401 or 403. Without this the app sits on a
     // loading screen forever instead of sending the person back to sign in.
@@ -626,6 +638,31 @@ export const api = {
       return data;
     } catch (err) {
       throw new Error(errorMessage(err, "That picture didn't send. Please try again."));
+    }
+  },
+
+  /**
+   * Deletes a message: "me" removes it from your view only (any message), "everyone" wipes it for both of you
+   * (your own messages only).
+   */
+  async deleteMessage(matchId: string, messageId: string, scope: "me" | "everyone"): Promise<void> {
+    try {
+      await client.delete(`/matches/${matchId}/messages/${messageId}`, { params: { scope } });
+    } catch (err) {
+      throw new Error(errorMessage(err, "That message couldn't be deleted. Please try again."));
+    }
+  },
+
+  /** A short video, already shrunk by the page. Only between people who have matched. */
+  async sendVideo(matchId: string, file: File, replyToId?: string): Promise<Message> {
+    const form = new FormData();
+    form.append("file", file);
+    if (replyToId) form.append("replyTo", replyToId);
+    try {
+      const { data } = await client.post<Message>(`/matches/${matchId}/messages/video`, form);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That video didn't send. Please try again."));
     }
   },
 

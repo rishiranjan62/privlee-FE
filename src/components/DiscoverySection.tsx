@@ -13,6 +13,7 @@ interface Props {
   profiles: Profile[];
   emptyLabel: string;
   onLike: (userId: string) => void;
+  showGender?: boolean;
 }
 
 export default function DiscoverySection({
@@ -21,6 +22,7 @@ export default function DiscoverySection({
   profiles,
   emptyLabel,
   onLike,
+  showGender = false,
 }: Props) {
   const navigate = useNavigate();
   const [showAll, setShowAll] = useState(false);
@@ -54,12 +56,18 @@ export default function DiscoverySection({
             <ProfileTile
               key={profile.userId}
               profile={profile}
-              // Matches stay in the feed, so offer the conversation rather than a second like.
-              actionLabel={profile.matchId ? "Message" : "♥  Like"}
+              showGender={showGender}
+              // Matches stay in the feed, so offer the conversation rather than a second like; someone already liked
+              // stays too, and says so instead of offering to be liked again.
+              actionLabel={profile.matchId ? "Message" : profile.likedByMe ? "♥  Liked" : "♥  Like"}
+              actionTone={!profile.matchId && profile.likedByMe ? "liked" : "default"}
+              disabled={!profile.matchId && Boolean(profile.likedByMe)}
               onAction={() =>
                 profile.matchId
                   ? navigate(`/messages/${profile.matchId}`)
-                  : onLike(profile.userId)
+                  : profile.likedByMe
+                    ? undefined
+                    : onLike(profile.userId)
               }
             />
           ))}

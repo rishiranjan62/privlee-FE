@@ -73,6 +73,8 @@ export interface Profile extends ProfileExtras {
   passwordSet: boolean | null;
   /** Only filled in on your own profile: whose profiles you want to see. Empty means everyone. */
   interestedIn?: Gender[];
+  /** In Discover: you have already liked this person. */
+  likedByMe?: boolean | null;
 }
 
 export type ProfileUpdate = Pick<
@@ -231,7 +233,7 @@ export interface GoogleSignupPayload extends Omit<SignupPayload, "email" | "pass
   idToken: string;
 }
 
-export type MessageType = "TEXT" | "WINK" | "GIFT" | "IMAGE";
+export type MessageType = "TEXT" | "WINK" | "GIFT" | "IMAGE" | "VIDEO";
 
 export type GiftKey =
   | "ROSE"
@@ -295,6 +297,7 @@ export type NotificationType =
   | "LIKE_RECEIVED"
   | "MATCH"
   | "MESSAGE"
+  | "MESSAGE_DELETED"
   | "GIFT"
   | "PHOTO_ACCESS_REQUESTED"
   | "PHOTO_ACCESS_GRANTED"
