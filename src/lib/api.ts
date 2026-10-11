@@ -1,5 +1,6 @@
 import { API_ORIGIN } from "./apiBase";
-import axios from "axios";
+import axios, { type InternalAxiosRequestConfig } from "axios";
+import { tokenExpired } from "./jwt";
 import type {
   AndroidRelease,
   AppReleaseInfo,
@@ -70,6 +71,41 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+/** "ok": a new access token is in place. "denied": the long-lived sign-in is gone, so the person must sign in. "unreachable": try again later. */
+export type RefreshResult = "ok" | "denied" | "unreachable";
+
+let refreshing: Promise<RefreshResult> | null = null;
+
+/**
+ * Trades the long-lived sign-in (an httpOnly cookie the page cannot read) for a new 30-minute token, so being away for
+ * an hour does not mean signing in again. Only one runs at a time: several requests failing together share it.
+ */
+export function refreshSession(): Promise<RefreshResult> {
+  if (!refreshing) {
+    // A plain axios call, not `client`: its own failure handling must not apply to the request that asks for a refresh.
+    refreshing = axios
+      .post<AuthResponse>(`${API_ORIGIN}/api/auth/refresh`, {}, { withCredentials: true, headers: { "X-Privlee-Client": "web" } })
+      .then(({ data }): RefreshResult => {
+        tokenStore.set(data.accessToken);
+        return "ok";
+      })
+      .catch((err): RefreshResult => (axios.isAxiosError(err) && err.response?.status === 401 ? "denied" : "unreachable"))
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
+/** Ends this browser's long-lived sign-in on the server. Best effort: signing out must work with no connection. */
+export function endSession(): void {
+  axios
+    .post(`${API_ORIGIN}/api/auth/logout`, {}, { withCredentials: true, headers: { "X-Privlee-Client": "web" } })
+    .catch(() => {});
+}
+
+type Retriable = InternalAxiosRequestConfig & { _retried?: boolean };
+
 client.interceptors.response.use(
   (response) => {
     // Sliding session: while someone keeps using the site the server hands back a fresh token, so only real
@@ -82,11 +118,25 @@ client.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     // An expired or rejected JWT comes back as 401 or 403. Without this the app sits on a
     // loading screen forever instead of sending the person back to sign in.
     const status = error.response?.status;
     const authFailed = status === 401 || status === 403;
+    const token = tokenStore.get();
+    // The 30-minute token has run out but the person has not: renew it from the long-lived sign-in and repeat the
+    // request, so nobody sees a login page for being away a while.
+    const original = error.config as Retriable | undefined;
+    if (authFailed && token && original && !original._retried && !String(original.url).startsWith("/auth/") && (status === 401 || tokenExpired(token))) {
+      const result = await refreshSession();
+      if (result === "ok") {
+        original._retried = true;
+        original.headers.Authorization = `Bearer ${tokenStore.get()}`;
+        return client(original);
+      }
+      // No connection (or the server is down): that is not the same as being signed out.
+      if (result === "unreachable") return Promise.reject(error);
+    }
     if (authFailed && tokenStore.get()) {
       tokenStore.clear();
       if (!window.location.pathname.startsWith("/login")) {
@@ -151,6 +201,15 @@ export const api = {
       return data;
     } catch (err) {
       throw new Error(errorMessage(err, "Could not link that build"));
+    }
+  },
+
+  /** Takes a build that is not the current one off the list. Its download counts stay in the totals. */
+  async removeAppRelease(id: string): Promise<void> {
+    try {
+      await client.delete(`/admin/app-releases/${id}`);
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not remove that build"));
     }
   },
 
