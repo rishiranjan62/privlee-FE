@@ -6,6 +6,7 @@ import { pageMeta } from "../lib/pageMeta";
 import { usePageMeta } from "../lib/seo";
 import { useAuth } from "../context/AuthContext";
 import PasswordInput from "../components/PasswordInput";
+import InterestedInPicker from "../components/InterestedInPicker";
 import GoogleButton, { Divider } from "../components/GoogleButton";
 import CityInput from "../components/CityInput";
 import ProfileExtrasFields, { emptyExtras } from "../components/ProfileExtrasFields";
@@ -61,13 +62,16 @@ export default function SignupPage() {
   const [relationshipStatus, setRelationshipStatus] =
     useState<RelationshipStatus>("MARRIED");
   const [city, setCity] = useState("");
+  const [interestedIn, setInterestedIn] = useState<Gender[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(0);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
   const [extras, setExtras] = useState<ProfileExtras>(emptyExtras);
   const location = useLocation();
+  // The step lives in the browser's history, one entry per step, so the browser's own Back (and a phone's back
+  // gesture) goes to the step before instead of leaving the sign-up page.
+  const step = (location.state as { signupStep?: number } | null)?.signupStep ?? 0;
   const [googleIdToken, setGoogleIdToken] = useState<string | null>(
     (location.state as { googleIdToken?: string } | null)?.googleIdToken ??
       null,
@@ -80,6 +84,20 @@ export default function SignupPage() {
   );
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  function goToStep(next: number) {
+    navigate(location.pathname, { state: { ...(location.state as object | null), signupStep: next } });
+  }
+
+  // What was typed is held in memory only, so after a reload or when coming back to this page from elsewhere there
+  // is nothing to carry on from: start at the first step rather than showing a later one with empty fields.
+  useEffect(() => {
+    if (step > 0) {
+      navigate(location.pathname, { replace: true, state: { ...(location.state as object | null), signupStep: 0 } });
+    }
+    // Only once, when the page opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -98,7 +116,7 @@ export default function SignupPage() {
       }
     }
     if (step < 3) {
-      setStep(step + 1);
+      goToStep(step + 1);
       return;
     }
     await createAccount(extras);
@@ -120,6 +138,7 @@ export default function SignupPage() {
         lookingFor,
         relationshipStatus,
         city,
+        interestedIn,
         acceptedTerms: accepted,
         termsVersion: terms.updated,
         inviteCode: inviteRequired ? inviteCode.trim() : undefined,
@@ -142,6 +161,7 @@ export default function SignupPage() {
             relationshipStatus,
             city,
             discreetMode: false,
+            interestedIn,
             ...optional,
           });
         } catch {
@@ -413,6 +433,15 @@ export default function SignupPage() {
                   </span>
                 </button>
               ))}
+              <div className="pt-4">
+                <p className="font-display text-xl">Who would you like to see?</p>
+                <p className="mt-1 text-sm text-[color:var(--l-muted)]">
+                  Only these profiles will show up for you. You can change it any time from your profile.
+                </p>
+                <div className="mt-3">
+                  <InterestedInPicker value={interestedIn} onChange={setInterestedIn} pillClass={pill} />
+                </div>
+              </div>
             </div>
           )}
 
@@ -432,7 +461,7 @@ export default function SignupPage() {
           {step > 0 && (
             <button
               type="button"
-              onClick={() => setStep(step - 1)}
+              onClick={() => navigate(-1)}
               className="rounded-full border border-[color:var(--l-line)] bg-white/60 px-6 py-3.5 transition hover:border-[color:var(--l-gold)]"
             >
               Back

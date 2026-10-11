@@ -24,6 +24,7 @@ function preview(message: Message | null, mine: boolean): string {
   if (message.type === "GIFT" && message.gift) {
     return `${who} sent ${(GIFT_LABELS[message.gift] ?? "a gift").toLowerCase()}`;
   }
+  if (message.type === "IMAGE") return `${who} sent a picture`;
   return message.content;
 }
 

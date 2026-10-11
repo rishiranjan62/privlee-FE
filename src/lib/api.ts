@@ -87,6 +87,8 @@ client.interceptors.response.use(
 
 /** Fired on window whenever the member's credits change, so the header can refresh. */
 export const WALLET_CHANGED = "privlee:wallet-changed";
+/** Something that was unread has been read (or the other way round): the badges should be counted again. */
+export const UNREAD_CHANGED = "privlee:unread-changed";
 /** Fired when a like is sent, so the daily allowance shown on screen is looked up again. */
 export const LIKE_SENT = "privlee:like-sent";
 
@@ -404,6 +406,11 @@ export const api = {
     await client.post("/notifications/read");
   },
 
+  /** "Clear all": removes every notification. */
+  async clearNotifications(): Promise<void> {
+    await client.delete("/notifications");
+  },
+
   // --- staff notifications (the member endpoints above refuse admins) ---
 
   async getAdminNotifications(): Promise<AppNotification[]> {
@@ -584,7 +591,7 @@ export const api = {
 
   async sendMessage(
     matchId: string,
-    payload: { content?: string; type?: MessageType; gift?: GiftKey },
+    payload: { content?: string; type?: MessageType; gift?: GiftKey; replyToId?: string },
   ): Promise<Message> {
     try {
       const { data } = await client.post<Message>(`/matches/${matchId}/messages`, payload);
@@ -593,6 +600,32 @@ export const api = {
       return data;
     } catch (err) {
       throw new Error(errorMessage(err, "That didn't send. Please try again."));
+    }
+  },
+
+  /** Leaves a reaction on a message, or takes it back when it is the same one again. */
+  async reactToMessage(matchId: string, messageId: string, emoji: string | null): Promise<Message> {
+    try {
+      const url = `/matches/${matchId}/messages/${messageId}/reaction`;
+      const { data } = emoji
+        ? await client.put<Message>(url, { emoji })
+        : await client.delete<Message>(url);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That reaction didn't go through."));
+    }
+  },
+
+  /** A picture or GIF, already shrunk by the page. Only between people who have matched. */
+  async sendImage(matchId: string, file: File, replyToId?: string): Promise<Message> {
+    const form = new FormData();
+    form.append("file", file);
+    if (replyToId) form.append("replyTo", replyToId);
+    try {
+      const { data } = await client.post<Message>(`/matches/${matchId}/messages/image`, form);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That picture didn't send. Please try again."));
     }
   },
 
@@ -667,6 +700,8 @@ export const api = {
 
   async markConversationRead(matchId: string): Promise<void> {
     await client.post(`/matches/${matchId}/messages/read`);
+    // Counted again only now that the server knows: the badge that was drawn when the message arrived is out of date.
+    window.dispatchEvent(new Event(UNREAD_CHANGED));
   },
 
   async getGiftCatalogue(matchId: string): Promise<GiftOption[]> {

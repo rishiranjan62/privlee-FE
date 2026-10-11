@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Navigate, NavLink, useLocation } from "react-router-dom";
 import { isAdminAccount } from "../lib/adminStatus";
-import { api } from "../lib/api";
+import { api, UNREAD_CHANGED } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import { usePageMeta } from "../lib/seo";
 import Logo from "./Logo";
@@ -66,6 +66,12 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
 
   // Kept current by the server pushing events - there is no timer.
   useStreamEvent(refreshBadges);
+
+  // And when this page itself changes what is unread, e.g. an open conversation marking a new message as read.
+  useEffect(() => {
+    window.addEventListener(UNREAD_CHANGED, refreshBadges);
+    return () => window.removeEventListener(UNREAD_CHANGED, refreshBadges);
+  }, [refreshBadges]);
 
   return (
     <div
@@ -156,8 +162,8 @@ function Badge({ count, floating = false }: { count: number; floating?: boolean 
     <span
       className={`inline-flex shrink-0 items-center justify-center rounded-full bg-gold font-semibold text-white ${
         floating
-          ? "absolute -right-0.5 -top-1.5 h-4 min-w-4 px-1 text-[10px] ring-2 ring-canvas"
-          : "ml-1 h-5 min-w-5 px-1.5 text-[11px]"
+          ? "absolute -right-1 -top-2 h-5 min-w-5 px-1 text-[11px] leading-none ring-2 ring-canvas"
+          : "ml-1 h-5 min-w-5 px-1.5 text-[11px] leading-none"
       }`}
     >
       {count}

@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, WALLET_CHANGED } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
-import type { GiftKey, GiftOption } from "../lib/types";
+import { prepareChatImage } from "../lib/chatImage";
+import { previewText } from "./ReplyQuote";
+import type { GiftKey, GiftOption, Message } from "../lib/types";
 
 const EMOJI = [
   "😊", "😉", "😍", "🥰", "😘", "😏", "🙈", "😁",
@@ -13,9 +15,13 @@ const EMOJI = [
 interface Props {
   matchId: string;
   onSend: (payload: { content?: string; type?: "TEXT" | "WINK" | "GIFT"; gift?: GiftKey }) => Promise<void>;
+  onSendImage: (file: File) => Promise<void>;
+  /** The message being answered, shown above the box until sent or cancelled. */
+  replyingTo?: Message | null;
+  onCancelReply?: () => void;
 }
 
-export default function ChatComposer({ matchId, onSend }: Props) {
+export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo, onCancelReply }: Props) {
   const [draft, setDraft] = useState("");
   const [tray, setTray] = useState<"none" | "emoji" | "gift">("none");
   const [gifts, setGifts] = useState<GiftOption[]>([]);
@@ -24,6 +30,28 @@ export default function ChatComposer({ matchId, onSend }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [textCost, setTextCost] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pictureInput = useRef<HTMLInputElement>(null);
+  const trayRef = useRef<HTMLDivElement>(null);
+
+  // An open tray closes when anything outside it is pressed (the two buttons that open it handle themselves), and on
+  // Escape - so it is never left covering the conversation.
+  useEffect(() => {
+    if (tray === "none") return;
+    const away = (e: Event) => {
+      const target = e.target as Element | null;
+      if (trayRef.current?.contains(target as Node) || target?.closest("[data-tray-toggle]")) return;
+      setTray("none");
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setTray("none");
+    document.addEventListener("mousedown", away);
+    document.addEventListener("touchstart", away);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("touchstart", away);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [tray]);
 
   useEffect(() => {
     api.getGiftCatalogue(matchId).then(setGifts).catch(() => setGifts([]));
@@ -107,6 +135,22 @@ export default function ChatComposer({ matchId, onSend }: Props) {
     }
   }
 
+  async function pickPicture(file: File | undefined) {
+    if (!file || sending) return;
+    setSending(true);
+    setTray("none");
+    setError(null);
+    try {
+      await onSendImage(await prepareChatImage(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "That picture didn't send.");
+    } finally {
+      setSending(false);
+      // So choosing the same file again still counts as a change.
+      if (pictureInput.current) pictureInput.current.value = "";
+    }
+  }
+
   function addEmoji(e: string) {
     setDraft((d) => d + e);
     inputRef.current?.focus();
@@ -115,7 +159,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
   return (
     <div className="border-t border-line pt-4">
       {tray === "emoji" && (
-        <div className="mb-3 grid grid-cols-8 gap-1 rounded-2xl border border-line bg-card p-3">
+        <div ref={trayRef} className="mb-3 grid max-h-[40vh] grid-cols-8 gap-1 overflow-y-auto rounded-2xl border border-line bg-card p-3">
           {EMOJI.map((e) => (
             <button
               key={e}
@@ -130,7 +174,9 @@ export default function ChatComposer({ matchId, onSend }: Props) {
       )}
 
       {tray === "gift" && (
-        <div className="mb-3 rounded-2xl border border-line bg-card p-3">
+        // Capped to part of the screen and scrollable: with two dozen gifts an uncapped tray is taller than the screen
+        // and pushes the whole conversation and the message box out of view.
+        <div ref={trayRef} className="mb-3 max-h-[min(42vh,24rem)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-card p-3">
           <p className="mb-2 px-1 text-xs text-muted">
             Gifts use your credits{balance !== null && <> - you have {balance.toLocaleString()}</>}. Anything
             typed below is sent as a note.{" "}
@@ -138,22 +184,36 @@ export default function ChatComposer({ matchId, onSend }: Props) {
               Get more credits
             </Link>
           </p>
-          <div className="grid grid-cols-4 gap-2">
-            {gifts.map((g) => (
-              <button
-                key={g.key}
-                type="button"
-                onClick={() => sendGift(g.key)}
-                disabled={sending || (balance !== null && balance < g.cost)}
-                title={balance !== null && balance < g.cost ? "Not enough credits" : undefined}
-                className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white/70 px-2 py-3 transition hover:border-gold hover:bg-white disabled:opacity-50"
-              >
-                <span className="text-2xl">{g.emoji}</span>
-                <span className="text-[11px] leading-tight">{g.label}</span>
-                <span className="text-[10px] text-gold">{g.cost} credits</span>
-              </button>
+          {[
+            { title: "", items: gifts.filter((g) => !g.playful) },
+            { title: "Playful · adults only", items: gifts.filter((g) => g.playful) },
+          ]
+            .filter((group) => group.items.length > 0)
+            .map((group) => (
+              <div key={group.title || "sweet"} className="mb-3 last:mb-0">
+                {group.title && (
+                  <p className="mb-2 mt-1 border-t border-line/70 px-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-gold">
+                    {group.title}
+                  </p>
+                )}
+                <div className="grid grid-cols-4 gap-2">
+                  {group.items.map((g) => (
+                    <button
+                      key={g.key}
+                      type="button"
+                      onClick={() => sendGift(g.key)}
+                      disabled={sending || (balance !== null && balance < g.cost)}
+                      title={balance !== null && balance < g.cost ? "Not enough credits" : undefined}
+                      className="flex flex-col items-center gap-1 rounded-xl border border-line bg-white/70 px-2 py-3 transition hover:border-gold hover:bg-white disabled:opacity-50"
+                    >
+                      <span className="text-2xl">{g.emoji}</span>
+                      <span className="text-[11px] leading-tight">{g.label}</span>
+                      <span className="text-[10px] text-gold">{g.cost} credits</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
-          </div>
         </div>
       )}
 
@@ -172,9 +232,32 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         </p>
       )}
 
+      {replyingTo && (
+        <div className="mb-3 flex items-start gap-3 rounded-2xl border-l-4 border-gold bg-gold/10 px-4 py-2.5">
+          <div className="min-w-0 flex-1 text-sm">
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-gold">
+              Replying to {replyingTo.senderId === localStorage.getItem("dd_user_id") ? "yourself" : "them"}
+            </span>
+            <span className="line-clamp-1 break-words text-ink/80">
+              {previewText({
+                id: replyingTo.id,
+                mine: false,
+                type: replyingTo.type,
+                text: replyingTo.content,
+                gift: replyingTo.gift,
+              })}
+            </span>
+          </div>
+          <button type="button" onClick={onCancelReply} aria-label="Cancel reply" className="shrink-0 px-1 text-lg leading-none text-muted hover:text-ink">
+            ×
+          </button>
+        </div>
+      )}
+
       <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
         <button
           type="button"
+          data-tray-toggle
           onClick={() => setTray((t) => (t === "emoji" ? "none" : "emoji"))}
           aria-label="Emoji"
           title="Emoji"
@@ -186,6 +269,7 @@ export default function ChatComposer({ matchId, onSend }: Props) {
         </button>
         <button
           type="button"
+          data-tray-toggle
           onClick={() => setTray((t) => (t === "gift" ? "none" : "gift"))}
           aria-label="Send a gift"
           title="Send a gift"
@@ -194,6 +278,23 @@ export default function ChatComposer({ matchId, onSend }: Props) {
           }`}
         >
           🎁
+        </button>
+        <input
+          ref={pictureInput}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => pickPicture(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          onClick={() => pictureInput.current?.click()}
+          disabled={sending}
+          aria-label="Send a picture or GIF"
+          title="Send a picture or GIF"
+          className="shrink-0 rounded-full border border-line bg-white/70 px-3 py-2.5 text-lg leading-none transition hover:border-gold disabled:opacity-50"
+        >
+          📷
         </button>
         {textCost === 0 && (
         <button
