@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import { tokenStore } from "../lib/api";
+import { endSession, tokenStore } from "../lib/api";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -32,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserId(newUserId);
       },
       logout: () => {
+        endSession();
         tokenStore.clear();
         localStorage.removeItem("dd_pseudonym");
         localStorage.removeItem("dd_user_id");

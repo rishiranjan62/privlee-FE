@@ -30,6 +30,7 @@ export default function AppReleasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [publishing, setPublishing] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
@@ -103,6 +104,30 @@ export default function AppReleasesPage() {
       setError(err instanceof Error ? err.message : "Could not publish that build");
     } finally {
       setPublishing(null);
+    }
+  }
+
+  async function remove(release: AppReleaseInfo) {
+    if (
+      !window.confirm(
+        `Remove version ${release.versionName} from this list? Its ${release.downloads.toLocaleString()} download${release.downloads === 1 ? "" : "s"} stay in the totals. ` +
+          (release.hosted ? "The file in file storage is not deleted. " : "") +
+          "You can upload the same version number again later.",
+      )
+    ) {
+      return;
+    }
+    setRemoving(release.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await api.removeAppRelease(release.id);
+      setNotice(`Version ${release.versionName} was removed.`);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not remove that build");
+    } finally {
+      setRemoving(null);
     }
   }
 
@@ -184,13 +209,23 @@ export default function AppReleasesPage() {
                 </td>
                 <td className="px-3 py-2 text-right">
                   {!r.current && (
-                    <button
-                      onClick={() => publish(r)}
-                      disabled={publishing !== null}
-                      className="rounded border border-line px-3 py-1 text-xs transition hover:border-gold disabled:opacity-50"
-                    >
-                      {publishing === r.id ? "Publishing..." : "Publish"}
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => publish(r)}
+                        disabled={publishing !== null || removing !== null}
+                        className="rounded border border-line px-3 py-1 text-xs transition hover:border-gold disabled:opacity-50"
+                      >
+                        {publishing === r.id ? "Publishing..." : "Publish"}
+                      </button>
+                      <button
+                        onClick={() => remove(r)}
+                        disabled={publishing !== null || removing !== null}
+                        aria-label={`Remove version ${r.versionName}`}
+                        className="rounded border border-line px-3 py-1 text-xs text-danger transition hover:border-danger disabled:opacity-50"
+                      >
+                        {removing === r.id ? "Removing..." : "Remove"}
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

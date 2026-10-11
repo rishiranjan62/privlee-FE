@@ -1,4 +1,5 @@
-import { tokenStore } from "./api";
+import { refreshSession, tokenStore } from "./api";
+import { tokenExpired } from "./jwt";
 import { API_ORIGIN } from "./apiBase";
 import type { NotificationType } from "./types";
 
@@ -13,16 +14,6 @@ type Listener = (event: StreamEvent) => void;
 const RECONNECT_MS = 3000;
 /** When the server keeps refusing, wait longer each time (up to a minute) instead of knocking every few seconds. */
 const MAX_BACKOFF_MS = 60_000;
-
-/** Whether the sign-in token has run out, read from its own expiry (no signature check: this only decides what to do next). */
-function tokenExpired(token: string): boolean {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return typeof payload.exp !== "number" || payload.exp * 1000 <= Date.now();
-  } catch {
-    return true;
-  }
-}
 
 /** Staff and members have separate push channels; the member one refuses admins outright. */
 export const MEMBER_STREAM = `${API_ORIGIN}/api/notifications/stream`;
@@ -115,9 +106,22 @@ class EventStream {
         // of knocking on the door every few seconds for ever. (A refusal with a token that has not run out is
         // something else, such as the wrong channel for this account, and is retried as before.)
         if (tokenExpired(token)) {
-          this.live = false;
-          tokenStore.clear();
-          if (!window.location.pathname.startsWith("/login")) window.location.assign("/login?expired=1");
+          // Renew from the long-lived sign-in first; only when that is gone too is the session over.
+          const result = await refreshSession();
+          if (generation !== this.generation) return;
+          if (result === "ok") {
+            this.failures = 0;
+            void this.connect(generation);
+            return;
+          }
+          if (result === "denied") {
+            this.live = false;
+            tokenStore.clear();
+            if (!window.location.pathname.startsWith("/login")) window.location.assign("/login?expired=1");
+            return;
+          }
+          // Unreachable: wait and try again like any other dropped connection.
+          this.scheduleReconnect(generation);
           return;
         }
       }
