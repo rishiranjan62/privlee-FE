@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import type { Gender, Profile } from "../lib/types";
-import { genderLabels } from "../lib/labels";
 import DiscoverySection from "../components/DiscoverySection";
 import LikeAllowanceNote from "../components/LikeAllowanceNote";
 import { paidLikeQuestion, useLikeAllowance } from "../lib/useLikeAllowance";
