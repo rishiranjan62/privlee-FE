@@ -639,9 +639,14 @@ export interface WalletData {
   transactions: { amount: number; label: string; createdAt: string }[];
 }
 
-/** What the next text costs the sender, in credits. 0 when it is free. */
+/**
+ * What writing costs the sender, in credits. `textCost` is the very next text (0 when free), `followUpCost` each one
+ * after it until the other person writes back, and `unmatched` is true while that still applies.
+ */
 export interface MessagePricing {
   textCost: number;
+  followUpCost: number;
+  unmatched: boolean;
 }
 
 /** The Android beta as the public download page sees it. Everything is null until an admin has published a build. */

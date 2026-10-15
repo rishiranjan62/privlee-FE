@@ -5,7 +5,8 @@ import { useStreamEvent } from "../context/StreamContext";
 import { prepareChatImage } from "../lib/chatImage";
 import { prepareChatVideo } from "../lib/chatVideo";
 import { previewText } from "./ReplyQuote";
-import type { GiftKey, GiftOption, Message } from "../lib/types";
+import type { GiftKey, GiftOption, Message, MessagePricing } from "../lib/types";
+import { unmatchedNote } from "../lib/messagePricing";
 
 const EMOJI = [
   "😊", "😉", "😍", "🥰", "😘", "😏", "🙈", "😁",
@@ -29,7 +30,9 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
   const [sending, setSending] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [textCost, setTextCost] = useState(0);
+  const [pricing, setPricing] = useState<MessagePricing>({ textCost: 0, followUpCost: 0, unmatched: false });
+  const textCost = pricing.textCost;
+  const warning = unmatchedNote(pricing);
   const inputRef = useRef<HTMLInputElement>(null);
   const pictureInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -69,8 +72,8 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
     const load = () =>
       api
         .getMessagePricing(matchId)
-        .then((p) => setTextCost(p.textCost))
-        .catch(() => setTextCost(0));
+        .then(setPricing)
+        .catch(() => setPricing({ textCost: 0, followUpCost: 0, unmatched: false }));
     load();
     window.addEventListener(WALLET_CHANGED, load);
     return () => window.removeEventListener(WALLET_CHANGED, load);
@@ -79,7 +82,7 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
   // The other person writing back is what makes messages free, so look again when one arrives.
   useStreamEvent((event) => {
     if (event.type === "MESSAGE") {
-      api.getMessagePricing(matchId).then((p) => setTextCost(p.textCost)).catch(() => {});
+      api.getMessagePricing(matchId).then(setPricing).catch(() => {});
     }
   });
 
@@ -239,12 +242,17 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
         </p>
       )}
 
-      {textCost > 0 && (
+      {warning && (
         <p className="mb-3 px-1 text-xs text-muted">
-          You haven't matched, so each message costs {textCost} credits until they write back.{" "}
-          <Link to="/credits" className="text-gold hover:underline">
-            Get more credits
-          </Link>
+          {warning}
+          {textCost > 0 && (
+            <>
+              {" "}
+              <Link to="/credits" className="text-gold hover:underline">
+                Get more credits
+              </Link>
+            </>
+          )}
         </p>
       )}
 
@@ -339,7 +347,7 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
         >
           🖼️
         </button>
-        {textCost === 0 && (
+        {!pricing.unmatched && (
         <button
           type="button"
           onClick={sendWink}

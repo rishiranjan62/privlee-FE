@@ -10,6 +10,9 @@ import NotificationBell from "./NotificationBell";
 import ProfileMenu from "./ProfileMenu";
 import WalletChip from "./WalletChip";
 
+/** How often a signed-in member says "I am here". The server counts someone as online for five minutes after it. */
+const HEARTBEAT_INTERVAL_MS = 60_000;
+
 const navItems = [
   { to: "/discover", label: "Discover" },
   { to: "/likes", label: "Likes" },
@@ -37,6 +40,23 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
   // Everything behind the sign-in is private: keep it out of search results.
   usePageMeta({ title: "Privlee", index: false });
   const location = useLocation();
+  // Being online is about being in the app, not about being on one page: this runs on every member page, and
+  // again the moment the tab comes back into view (a hidden tab's timer is slowed down by the browser).
+  useEffect(() => {
+    const beat = () => {
+      if (document.visibilityState === "visible") api.heartbeat().catch(() => {});
+    };
+    beat();
+    const interval = setInterval(beat, HEARTBEAT_INTERVAL_MS);
+    document.addEventListener("visibilitychange", beat);
+    window.addEventListener("focus", beat);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", beat);
+      window.removeEventListener("focus", beat);
+    };
+  }, []);
+
   const [pendingLikes, setPendingLikes] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
