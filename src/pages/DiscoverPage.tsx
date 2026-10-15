@@ -12,7 +12,8 @@ interface Sections {
   fresh: Profile[];
 }
 
-const HEARTBEAT_INTERVAL_MS = 60_000;
+/** While Discover is open and in view, the sections are re-fetched this often, so "Online now" does not go stale. */
+const REFRESH_INTERVAL_MS = 120_000;
 
 /** Plural, for the filter: "Women (12)". */
 const GENDER_GROUPS: { value: Gender; label: string }[] = [
@@ -76,10 +77,21 @@ export default function DiscoverPage() {
     }
   });
 
+  // Who is online changes while this page sits open: fetch again on coming back to the tab, and every couple of minutes
+  // while it is in view. A failed refresh keeps what is on screen instead of replacing it with an error.
   useEffect(() => {
-    api.heartbeat().catch(() => {});
-    const interval = setInterval(() => api.heartbeat().catch(() => {}), HEARTBEAT_INTERVAL_MS);
-    return () => clearInterval(interval);
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      Promise.all([api.getOnline(), api.getNearby(), api.getNewMembers()])
+        .then(([online, nearby, fresh]) => setSections({ online, nearby, fresh }))
+        .catch(() => {});
+    };
+    const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+    };
   }, []);
 
   /** The like went through: the tile stays, and now says so (or offers the conversation, if it made a match). */

@@ -18,7 +18,8 @@ import {
   relationshipLabels,
   smokingLabels,
 } from "../lib/labels";
-import type { Profile } from "../lib/types";
+import type { MessagePricing, Profile } from "../lib/types";
+import { unmatchedNote } from "../lib/messagePricing";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -68,7 +69,8 @@ export default function ProfileViewPage() {
   const [likeError, setLikeError] = useState<string | null>(null);
   const allowance = useLikeAllowance();
   // Writing to someone you have not matched with: what it costs, and the note being written.
-  const [startCost, setStartCost] = useState<number | null>(null);
+  const [startPricing, setStartPricing] = useState<MessagePricing | null>(null);
+  const startCost = startPricing?.textCost ?? null;
   const [photoCost, setPhotoCost] = useState<number | null>(null);
   const [askError, setAskError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
@@ -122,7 +124,7 @@ export default function ProfileViewPage() {
   }
 
   useEffect(() => {
-    api.getStartPricing().then((p) => setStartCost(p.textCost)).catch(() => setStartCost(null));
+    api.getStartPricing().then(setStartPricing).catch(() => setStartPricing(null));
     api.getPhotoRequestCost().then(setPhotoCost).catch(() => setPhotoCost(null));
   }, []);
 
@@ -329,8 +331,7 @@ export default function ProfileViewPage() {
         {composing && !profile.matchId && !profile.conversationId && (
           <div className={`${cardClass} mb-4 p-5`}>
             <label htmlFor="cold-note" className="mb-2 block text-sm text-muted">
-              Write to {profile.pseudonym}. You haven't matched, so this costs {startCost} credits, and so does each
-              message you send before they reply.
+              Write to {profile.pseudonym}. {startPricing ? unmatchedNote(startPricing) : null}
             </label>
             <textarea
               id="cold-note"
