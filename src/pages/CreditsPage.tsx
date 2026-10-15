@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { openCheckout } from "../lib/cashfree";
 import { cardClass } from "../lib/ui";
-import type { PackCatalogue, PaymentStatus, WalletData } from "../lib/types";
+import { saveFile } from "../lib/download";
+import type { MemberInvoice, PackCatalogue, PaymentStatus, WalletData } from "../lib/types";
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -18,10 +19,25 @@ export default function CreditsPage() {
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "good" | "wait" | "bad"; text: string } | null>(null);
+  const [invoices, setInvoices] = useState<MemberInvoice[]>([]);
+  const [invoiceBusy, setInvoiceBusy] = useState<string | null>(null);
 
   const loadWallet = useCallback(() => {
     api.getWallet().then(setWallet).catch(() => {});
+    api.getMyInvoices().then(setInvoices).catch(() => {});
   }, []);
+
+  async function downloadInvoice(orderId: string) {
+    setInvoiceBusy(orderId);
+    try {
+      const f = await api.downloadMyInvoice(orderId);
+      saveFile(f.blob, f.filename);
+    } catch {
+      setError("We couldn't download that invoice. Please try again.");
+    } finally {
+      setInvoiceBusy(null);
+    }
+  }
 
   useEffect(() => {
     loadWallet();
@@ -134,7 +150,10 @@ export default function CreditsPage() {
                 {error}
               </p>
             )}
-            <p className="mb-4 text-sm text-muted">₹1 = 10 credits</p>
+            <p className="mb-4 text-sm text-muted">
+              ₹1 = 10 credits
+              {catalogue.gstIncluded && catalogue.gstPercent ? ` · every price includes ${catalogue.gstPercent}% GST` : ""}
+            </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {catalogue.packs.map((pack) => (
                 <button
@@ -149,6 +168,7 @@ export default function CreditsPage() {
                   <span className="mt-3 rounded-full bg-ink px-4 py-1.5 text-sm font-medium text-canvas">
                     {buying === pack.id ? "Opening..." : rupees(pack.amountInr)}
                   </span>
+                  {catalogue.gstIncluded && <span className="mt-1 text-[11px] text-muted">incl. GST</span>}
                 </button>
               ))}
             </div>
@@ -163,6 +183,32 @@ export default function CreditsPage() {
           </>
         )}
       </section>
+
+      {invoices.length > 0 && (
+        <section className="mb-10">
+          <h2 className="mb-4 font-display text-2xl">Your invoices</h2>
+          <ul className={`${cardClass} divide-y divide-line/70`}>
+            {invoices.map((inv) => (
+              <li key={inv.orderId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-sm">
+                <span>
+                  <span className="font-mono text-xs">{inv.invoiceNumber}</span>
+                  <span className="ml-2 text-muted">{new Date(inv.issuedAt).toLocaleDateString()}</span>
+                  <span className="ml-2 text-muted">
+                    {inv.credits.toLocaleString()} credits · {rupees(inv.grossPaise / 100)} incl. {rupees(inv.gstPaise / 100)} GST
+                  </span>
+                </span>
+                <button
+                  onClick={() => downloadInvoice(inv.orderId)}
+                  disabled={invoiceBusy === inv.orderId}
+                  className="text-gold hover:underline disabled:opacity-60"
+                >
+                  {invoiceBusy === inv.orderId ? "Preparing..." : "Download PDF"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-4 font-display text-2xl">History</h2>

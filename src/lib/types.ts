@@ -49,6 +49,19 @@ export interface Photo {
   url: string;
   blurred: boolean;
   primary: boolean;
+  /** In the private album. Only ever true on your own photos, or on someone's album you have been let into. */
+  privatePhoto?: boolean;
+}
+
+/**
+ * Someone else's private album as far as you may see it: how many photos, where you stand, and - once let in - the
+ * photos. `access` is null until you ask; `unlockCost` is what it costs to be let in at once.
+ */
+export interface PrivateAlbum {
+  count: number;
+  access: PhotoAccessStatus | null;
+  photos: Photo[];
+  unlockCost: number;
 }
 
 export interface Profile extends ProfileExtras {
@@ -75,6 +88,8 @@ export interface Profile extends ProfileExtras {
   interestedIn?: Gender[];
   /** In Discover: you have already liked this person. */
   likedByMe?: boolean | null;
+  /** Someone else's private album, if they have one. Null on your own profile. */
+  privateAlbum?: PrivateAlbum | null;
 }
 
 export type ProfileUpdate = Pick<
@@ -158,7 +173,7 @@ export interface AnalyticsSeries {
   /** FLOW: how many happened in the bucket. STOCK: how many there are at its end. */
   kind: "FLOW" | "STOCK";
   /** "count" for most measures; "seconds" for time. */
-  unit: "count" | "seconds";
+  unit: "count" | "seconds" | "paise";
   /** Whole range: the sum for a flow, the final value for a stock, unique members for activity. */
   total: number;
   /** The same figure for the equally long range just before this one. */
@@ -298,10 +313,15 @@ export type NotificationType =
   | "MATCH"
   | "MESSAGE"
   | "MESSAGE_DELETED"
+  | "MESSAGE_EDITED"
   | "GIFT"
   | "PHOTO_ACCESS_REQUESTED"
   | "PHOTO_ACCESS_GRANTED"
   | "PHOTO_ACCESS_REVOKED"
+  | "PRIVATE_ACCESS_REQUESTED"
+  | "PRIVATE_ACCESS_GRANTED"
+  | "PRIVATE_ACCESS_UNLOCKED"
+  | "PRIVATE_ACCESS_REVOKED"
   | "MODERATION_WARNING"
   | "REPORT_RESOLVED"
   | "ADMIN_NEW_REPORT"
@@ -448,6 +468,27 @@ export interface AdminUserSummary {
   accountState: "ACTIVE" | "SUSPENDED" | "BANNED" | "DELETED";
   joinedAt: string;
   openReports: number;
+  /** Null for people who deleted their account: their profile is gone. */
+  gender: string | null;
+  city: string | null;
+  deletedAt: string | null;
+}
+
+export interface UserFacets {
+  cities: { key: string; label: string; members: number }[];
+}
+
+/** Everything the Users list can be narrowed by. Unset fields are not sent. */
+export interface UserListQuery {
+  q?: string;
+  filter?: string;
+  status?: "active" | "deleted" | "any";
+  gender?: string;
+  city?: string;
+  /** With from/until: the people behind an analytics number. */
+  event?: string;
+  from?: string;
+  until?: string;
 }
 
 export interface AdminUserDetail {
@@ -475,6 +516,7 @@ export interface AdminUserDetail {
   history: AuditEntry[];
   /** When they deleted their own account, if they did. */
   deletedAt: string | null;
+  creditBalance: number;
 }
 
 export interface AdminPhoto {
@@ -531,6 +573,8 @@ export interface Message {
   theirReaction?: string | null;
   /** What this message answers, if anything. */
   replyTo?: ReplyPreview | null;
+  /** When the sender last changed the words, or null if they never did. */
+  editedAt?: string | null;
 }
 
 /** A short view of the message a reply answers: enough to recognise it, never the picture itself. */
@@ -567,6 +611,19 @@ export interface PackCatalogue {
   enabled: boolean;
   environment: "sandbox" | "production";
   packs: CreditPack[];
+  /** The GST that is already in every price, as a percent. Prices are inclusive: what is shown is what is paid. */
+  gstPercent?: number;
+  gstIncluded?: boolean;
+}
+
+/** One of a member's own invoices. */
+export interface MemberInvoice {
+  orderId: string;
+  invoiceNumber: string;
+  issuedAt: string;
+  grossPaise: number;
+  gstPaise: number;
+  credits: number;
 }
 
 export interface PaymentCheckout {
@@ -623,4 +680,111 @@ export interface AppReleasesOverview {
   maxUploadMb: number;
   /** Where hosted builds may be linked from; empty when the server isn't set up for it. */
   hostedBaseUrl: string;
+}
+
+
+// ---- admin: payments
+
+export interface PaymentMetric {
+  value: number;
+  previous: number;
+}
+
+export interface PaymentsSummary {
+  gateway: { enabled: boolean; environment: string };
+  granularity: Granularity;
+  from: string;
+  to: string;
+  lastBucketPartial: boolean;
+  /** Money is in paise. Revenue includes GST. */
+  revenuePaise: PaymentMetric;
+  /** Revenue without the GST in it, and the GST in it. */
+  taxablePaise: PaymentMetric;
+  gstPaise: PaymentMetric;
+  tax: {
+    ratePercent: number;
+    sac: string;
+    /** False until the seller's details are set on the server: no invoices are issued before that. */
+    invoicesEnabled: boolean;
+    missing: string[];
+    sellerState: string;
+    placeOfSupply: string;
+    description: string;
+    /** Settings that would name the service on an invoice, which may be seen by others. */
+    discretionWarnings: string[];
+  };
+  /** Paid orders with no invoice yet. */
+  paidWithoutInvoice: number;
+  paidOrders: PaymentMetric;
+  creditsSold: PaymentMetric;
+  payingMembers: PaymentMetric;
+  startedOrders: PaymentMetric;
+  conversionPercent: PaymentMetric;
+  averageOrderPaise: PaymentMetric;
+  repeatBuyers: number;
+  failedOrders: number;
+  abandonedOrders: number;
+  pendingOrders: number;
+  attention: { amountMismatches: number; mismatchPaise: number; stuckOrders: number; failedToStart: number };
+  series: AnalyticsSeries[];
+  byPack: { packId: string; orders: number; revenuePaise: number; credits: number }[];
+  economy: { inCirculation: number; lines: { reason: string; label: string; entries: number; credits: number }[] };
+}
+
+export type PaymentOrderStatus = "PAID" | "PENDING" | "ABANDONED" | "FAILED";
+
+export interface PaymentMember {
+  userId: string;
+  pseudonym: string;
+  email: string;
+  deleted: boolean;
+}
+
+export interface PaymentOrderRow {
+  orderId: string;
+  createdAt: string;
+  paidAt: string | null;
+  status: PaymentOrderStatus;
+  failureReason: "START_FAILED" | "AMOUNT_MISMATCH" | null;
+  packId: string;
+  credits: number;
+  amountPaise: number;
+  currency: string;
+  cashfreeOrderId: string | null;
+  taxablePaise: number;
+  gstPaise: number;
+  invoiceNumber: string | null;
+  invoiceEmailed: boolean;
+  member: PaymentMember;
+}
+
+export interface PaymentOrderPage {
+  total: number;
+  page: number;
+  size: number;
+  rows: PaymentOrderRow[];
+}
+
+export interface LedgerRow {
+  id: string;
+  createdAt: string;
+  reason: string;
+  label: string;
+  credits: number;
+  reference: string | null;
+  member: PaymentMember;
+}
+
+export interface LedgerPage {
+  total: number;
+  page: number;
+  size: number;
+  rows: LedgerRow[];
+}
+
+export interface PaymentFilters {
+  status?: string;
+  q?: string;
+  from?: string;
+  to?: string;
 }

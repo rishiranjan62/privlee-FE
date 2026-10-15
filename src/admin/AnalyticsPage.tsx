@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { formatValue } from "../lib/format";
 import { genderLabels } from "../lib/labels";
@@ -41,6 +42,42 @@ function change(s: AnalyticsSeries): string {
   if (pct === 0) return "no change";
   // The arrow and the sign carry the direction; whether more is better depends on the measure.
   return `${pct > 0 ? "▲ +" : "▼ "}${pct}%`;
+}
+
+/** Which list of members each card opens, or the page that holds its detail. Traffic is anonymous, so it has none. */
+const CARD_EVENT: Record<string, string> = {
+  totalMembers: "members",
+  newMembers: "joined",
+  activeMembers: "active",
+  deleted: "deleted",
+  returned: "returned",
+  avgTime: "active",
+  avgTimeWeb: "active",
+  avgTimeApp: "active",
+  matches: "matched",
+  likes: "likers",
+  messages: "messagers",
+  photos: "uploaders",
+};
+const CARD_PAGE: Record<string, string> = { reports: "/admin/reports", moderation: "/admin/audit" };
+
+/** First day after the last bucket, UTC: where the report's range stops. */
+function rangeEnd(last: string, step: Granularity): string {
+  const d = new Date(`${last}T00:00:00Z`);
+  if (step === "day") d.setUTCDate(d.getUTCDate() + 1);
+  else if (step === "week") d.setUTCDate(d.getUTCDate() + 7);
+  else d.setUTCMonth(d.getUTCMonth() + 1);
+  return isoDay(d);
+}
+
+function cardLink(data: Analytics, key: string): string | null {
+  if (CARD_PAGE[key]) return CARD_PAGE[key];
+  const event = CARD_EVENT[key];
+  if (!event) return null;
+  const p = new URLSearchParams({ event, from: data.from, until: rangeEnd(data.to, data.granularity) });
+  if (data.gender) p.set("gender", data.gender);
+  if (data.city) p.set("city", data.city);
+  return `/admin/users?${p}`;
 }
 
 function toCsv(data: Analytics): string {
@@ -249,15 +286,32 @@ export default function AnalyticsPage() {
           )}
 
           <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {data.series.map((s) => (
-              <div key={s.key} className="rounded-lg border border-line bg-white p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted">{s.label}</p>
-                <p className="mt-1 text-3xl font-semibold tabular-nums">{s.total === 0 && s.unit === "seconds" ? "—" : formatValue(s.total, s.unit)}</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  {change(s)} vs previous {buckets} {noun}
-                </p>
-              </div>
-            ))}
+            {data.series.map((s) => {
+              const to = cardLink(data, s.key);
+              const card = (
+                <>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted">{s.label}</p>
+                  <p className="mt-1 text-3xl font-semibold tabular-nums">{s.total === 0 && s.unit === "seconds" ? "—" : formatValue(s.total, s.unit)}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {change(s)} vs previous {buckets} {noun}
+                  </p>
+                </>
+              );
+              return to ? (
+                <Link
+                  key={s.key}
+                  to={to}
+                  title={to.startsWith("/admin/users") ? "See the members behind this number" : "Open the details"}
+                  className="rounded-lg border border-line bg-white p-4 transition hover:border-gold focus-visible:border-gold focus-visible:outline-none"
+                >
+                  {card}
+                </Link>
+              ) : (
+                <div key={s.key} className="rounded-lg border border-line bg-white p-4">
+                  {card}
+                </div>
+              );
+            })}
           </div>
 
           <div className="mt-6 grid gap-3 lg:grid-cols-2">
@@ -466,7 +520,8 @@ function TrafficSection({ traffic, noun }: { traffic: Traffic | null; noun: stri
         How many people reach the website and the app. Counted per page view with no cookies, no addresses and
         nothing that identifies a visitor. A visitor is counted once per browser per day, so someone who comes
         back on another day counts again. Places are names only (country, and state and city when available),
-        looked up when the page is opened and never stored with anything that identifies the visitor.
+        looked up when the page is opened and never stored with anything that identifies the visitor. Because
+        visitors are anonymous there is no list of people behind these numbers.
       </p>
 
       {empty && (

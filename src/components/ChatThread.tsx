@@ -9,6 +9,7 @@ import ChatVideo from "./ChatVideo";
 import MessageReactions from "./MessageReactions";
 import ReplyQuote from "./ReplyQuote";
 import { GIFT_EMOJI, GIFT_LABELS } from "../lib/labels";
+import { dayKey, dayLabel, messageFullTime, messageTime } from "../lib/chatTime";
 import type { GiftKey, Message } from "../lib/types";
 
 interface Props {
@@ -22,6 +23,10 @@ export default function ChatThread({ matchId, onActivity }: Props) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  // The message whose words are being changed, and what the box holds meanwhile.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activity = useRef(onActivity);
   activity.current = onActivity;
@@ -66,7 +71,7 @@ export default function ChatThread({ matchId, onActivity }: Props) {
 
   // Pushed from the server the instant the other person sends something.
   useStreamEvent((event) => {
-    if (event.type === "MESSAGE" || event.type === "GIFT" || event.type === "MESSAGE_DELETED") {
+    if (event.type === "MESSAGE" || event.type === "GIFT" || event.type === "MESSAGE_DELETED" || event.type === "MESSAGE_EDITED") {
       reload();
     }
   });
@@ -117,6 +122,36 @@ export default function ChatThread({ matchId, onActivity }: Props) {
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "That message couldn't be deleted.");
       reload();
+    }
+  }
+
+  function startEdit(m: Message) {
+    setEditingId(m.id);
+    setDraft(m.content);
+    setDeleteError(null);
+  }
+
+  function stopEdit() {
+    setEditingId(null);
+    setDraft("");
+  }
+
+  /** Saves the new words. The box stays open, with the reason shown, if the server says no. */
+  async function saveEdit(m: Message) {
+    const content = draft.trim();
+    if (!content || saving) return;
+    if (content === m.content) return stopEdit();
+    setSaving(true);
+    setDeleteError(null);
+    try {
+      const updated = await api.editMessage(matchId, m.id, content);
+      setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, ...updated, imageUrl: x.imageUrl ?? updated.imageUrl } : x)));
+      stopEdit();
+      onActivity?.();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "That message couldn't be edited.");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -183,6 +218,40 @@ export default function ChatThread({ matchId, onActivity }: Props) {
         </div>,
       );
     }
+    if (editingId === m.id) {
+      return (
+        <div className="flex w-[min(28rem,80vw)] flex-col gap-2 rounded-2xl border border-gold bg-card p-3">
+          <textarea
+            autoFocus
+            // The caret goes after the existing words, where a person carries on writing.
+            onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
+            value={draft}
+            maxLength={2000}
+            rows={3}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") stopEdit();
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveEdit(m);
+            }}
+            aria-label="Edit your message"
+            className="w-full resize-none rounded-xl border border-line bg-white px-3 py-2 leading-relaxed text-ink outline-none focus:border-gold"
+          />
+          <div className="flex justify-end gap-2 text-sm">
+            <button type="button" onClick={stopEdit} className="rounded-full border border-line px-4 py-1.5 text-muted transition hover:border-gold">
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => saveEdit(m)}
+              disabled={saving || !draft.trim()}
+              className="rounded-full bg-ink px-4 py-1.5 font-medium text-canvas transition hover:bg-gold disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         className={`break-words px-5 py-3 leading-relaxed [overflow-wrap:anywhere] ${
@@ -213,19 +282,32 @@ export default function ChatThread({ matchId, onActivity }: Props) {
           <p className="py-16 text-center font-display text-2xl text-muted">Say something first.</p>
         )}
 
-        {messages.map((m) => {
+        {messages.map((m, i) => {
           const mine = m.senderId === userId;
+          const newDay = i === 0 || dayKey(messages[i - 1].createdAt) !== dayKey(m.createdAt);
           return (
-            <div key={m.id} id={`msg-${m.id}`} className={`flex rounded-2xl ${mine ? "justify-end" : "justify-start"}`}>
-              <MessageReactions
-                message={m}
-                mine={mine}
-                onReact={(emoji) => handleReact(m, emoji)}
-                onReply={() => setReplyingTo(m)}
-                onDelete={(scope) => handleDelete(m, scope)}
-              >
-                {renderBody(m, mine)}
-              </MessageReactions>
+            <div key={m.id}>
+              {newDay && (
+                <p className="my-3 text-center text-xs font-medium uppercase tracking-wider text-muted">{dayLabel(m.createdAt)}</p>
+              )}
+              <div id={`msg-${m.id}`} className={`flex rounded-2xl ${mine ? "justify-end" : "justify-start"}`}>
+                <MessageReactions
+                  message={m}
+                  mine={mine}
+                  onReact={(emoji) => handleReact(m, emoji)}
+                  onReply={() => setReplyingTo(m)}
+                  onDelete={(scope) => handleDelete(m, scope)}
+                  onEdit={mine && m.type === "TEXT" && editingId !== m.id ? () => startEdit(m) : undefined}
+                  footer={
+                    <time dateTime={m.createdAt} title={messageFullTime(m.createdAt)}>
+                      {messageTime(m.createdAt)}
+                      {m.editedAt && <span title={`Edited ${messageFullTime(m.editedAt)}`}> · edited</span>}
+                    </time>
+                  }
+                >
+                  {renderBody(m, mine)}
+                </MessageReactions>
+              </div>
             </div>
           );
         })}

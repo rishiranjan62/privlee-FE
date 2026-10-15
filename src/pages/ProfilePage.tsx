@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import CityInput from "../components/CityInput";
 import ProfileExtrasFields from "../components/ProfileExtrasFields";
 import PhotoAccessManager from "../components/PhotoAccessManager";
+import PrivateAccessManager from "../components/PrivateAccessManager";
 import PhotoManager from "../components/PhotoManager";
 import InterestedInPicker from "../components/InterestedInPicker";
 import { cardClass, inputClass, labelClass, pillClass } from "../lib/ui";
@@ -53,6 +54,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Which album the file being picked is for: the next change on the file box reads it.
+  const addingPrivate = useRef(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -112,7 +116,16 @@ export default function ProfilePage() {
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const updated = await api.uploadPhoto(file);
+    setPhotoError(null);
+    let updated: Profile;
+    try {
+      updated = await api.uploadPhoto(file, addingPrivate.current);
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setPhotoError(message ?? "We couldn't add that photo. Please try again.");
+      if (fileInput.current) fileInput.current.value = "";
+      return;
+    }
     // Photos persist on upload, so take only those from the response - overwriting the whole
     // profile would throw away any edits still sitting unsaved in the form.
     setProfile((prev) => (prev ? { ...prev, photos: updated.photos } : updated));
@@ -128,15 +141,22 @@ export default function ProfilePage() {
           {profile.pseudonym}
         </h1>
         <p className="mt-3 max-w-md text-muted">
-          Your real name is never collected. You always see your own photos clearly — everyone else
-          sees them blurred.
+          Your real name is never collected. You always see your own photos clearly. Everyone else
+          sees only what you choose to show.
         </p>
       </header>
 
       <section className={`${cardClass} p-7`}>
         <PhotoManager
           photos={profile.photos}
-          onAdd={() => fileInput.current?.click()}
+          onAdd={() => {
+            addingPrivate.current = false;
+            fileInput.current?.click();
+          }}
+          onAddPrivate={() => {
+            addingPrivate.current = true;
+            fileInput.current?.click();
+          }}
           onPhotosChanged={(updated) => {
             // Photos persist immediately, so mirror them into both copies and leave
             // any unsaved text edits in the form untouched.
@@ -144,6 +164,11 @@ export default function ProfilePage() {
             setSaved((prev) => (prev ? { ...prev, photos: updated.photos } : updated));
           }}
         />
+        {photoError && (
+          <p role="alert" className="mt-4 text-sm text-danger">
+            {photoError}
+          </p>
+        )}
         <input
           ref={fileInput}
           type="file"
@@ -154,6 +179,7 @@ export default function ProfilePage() {
       </section>
 
       <PhotoAccessManager />
+      <PrivateAccessManager />
 
       <section className={`${cardClass} space-y-6 p-7`}>
         <div>

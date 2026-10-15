@@ -32,6 +32,19 @@
         "description": "A private, pseudonym-only space for adults seeking discreet connection."
       }
     </script>
+
+    <!-- The public pages are written into this file ahead of time (so search engines and link previews see
+         text), and they stay on screen until the app has downloaded and replaces them. Someone who is
+         already signed in would see the landing page flash by on every reload, so for them the pre-written
+         page is hidden before it is ever painted. Signed-out visitors and crawlers keep it. -->
+    <script>
+      try {
+        if (localStorage.getItem("dd_token")) document.documentElement.setAttribute("data-signed-in", "");
+      } catch (e) {}
+    </script>
+    <style>
+      html[data-signed-in] #root > .landing { display: none; }
+    </style>
   </head>
   <body>
     <div id="root"></div>

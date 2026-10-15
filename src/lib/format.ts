@@ -8,6 +8,13 @@ export function formatDuration(totalSeconds: number): string {
   return `${m}m ${String(s % 60).padStart(2, "0")}s`;
 }
 
-export function formatValue(value: number, unit: "count" | "seconds"): string {
+/** Paise in, "₹1,234.50" out. Whole rupees drop the ".00". */
+export function formatMoney(paise: number): string {
+  const rupees = paise / 100;
+  return `₹${rupees.toLocaleString("en-IN", { minimumFractionDigits: paise % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
+}
+
+export function formatValue(value: number, unit: "count" | "seconds" | "paise"): string {
+  if (unit === "paise") return formatMoney(value);
   return unit === "seconds" ? formatDuration(value) : value.toLocaleString();
 }

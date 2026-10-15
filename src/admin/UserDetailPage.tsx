@@ -37,6 +37,11 @@ export default function UserDetailPage() {
   const [reinstateReason, setReinstateReason] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // credits
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditReason, setCreditReason] = useState("");
+  const [creditNote, setCreditNote] = useState<string | null>(null);
+
   const load = useCallback(() => {
     if (id)
       api
@@ -109,6 +114,24 @@ export default function UserDetailPage() {
     }
   }
 
+  async function giveCredits() {
+    setBusy(true);
+    setError(null);
+    setCreditNote(null);
+    try {
+      const amount = Number(creditAmount);
+      const balance = await api.grantCredits(user!.userId, amount, creditReason.trim());
+      setCreditNote(`Gave ${amount.toLocaleString()} credits. Balance is now ${balance.toLocaleString()}.`);
+      setCreditAmount("");
+      setCreditReason("");
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not give credits");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function reinstate() {
     setBusy(true);
     try {
@@ -137,6 +160,9 @@ export default function UserDetailPage() {
     }
   }
 
+  const amountValid = /^\d+$/.test(creditAmount) && Number(creditAmount) >= 1 && Number(creditAmount) <= 10_000_000;
+  const canGiveCredits = amountValid && creditReason.trim().length >= 5;
+  const canHaveCredits = !isAdmin && user.accountState !== "DELETED";
   const canSanction = reason.trim().length >= 5 && message.trim().length > 0;
 
   return (
@@ -196,6 +222,46 @@ export default function UserDetailPage() {
           )}
         </section>
       </div>
+
+      {canHaveCredits && (
+        <section className="mt-4 rounded-lg border border-line bg-white p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Credits</h2>
+          <p className="mt-2 text-sm">
+            Balance: <span className="font-semibold tabular-nums">{user.creditBalance.toLocaleString()}</span>
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-xs font-medium uppercase tracking-wider text-muted">
+              Credits to give
+              <input
+                inputMode="numeric"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value.replace(/[^\d]/g, ""))}
+                placeholder="e.g. 500"
+                className="w-36 rounded border border-line bg-white px-2.5 py-2 text-sm normal-case outline-none focus:border-gold"
+              />
+            </label>
+            <label className="flex min-w-[16rem] flex-1 flex-col gap-1 text-xs font-medium uppercase tracking-wider text-muted">
+              Reason (kept in the audit log, not shown to them)
+              <input
+                value={creditReason}
+                onChange={(e) => setCreditReason(e.target.value)}
+                maxLength={500}
+                placeholder="e.g. Goodwill after a failed payment"
+                className="rounded border border-line bg-white px-2.5 py-2 text-sm normal-case outline-none focus:border-gold"
+              />
+            </label>
+            <button
+              onClick={giveCredits}
+              disabled={busy || !canGiveCredits}
+              className="rounded bg-ink px-5 py-2 text-sm font-medium text-canvas transition hover:bg-gold disabled:opacity-50"
+            >
+              Give credits
+            </button>
+          </div>
+          {creditNote && <p className="mt-2 text-sm text-muted">{creditNote}</p>}
+          <p className="mt-2 text-xs text-muted">Up to 10,000,000 at a time. They see it in their credit history as “Credits from Privlee”.</p>
+        </section>
+      )}
 
       <section className="mt-4 rounded-lg border border-line bg-white p-4">
         <div className="flex items-center justify-between">

@@ -67,12 +67,12 @@ export default function ProfileTile({
         </span>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 p-2.5">
-        <p className="flex items-baseline gap-1 font-display text-base font-medium leading-tight text-white">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 p-2 sm:p-2.5">
+        <p className="flex items-baseline gap-1 font-display text-sm font-medium leading-tight text-white sm:text-base">
           <span className="truncate">{profile.pseudonym}</span>
           <span className="text-xs font-normal text-white/70">{profile.age}</span>
         </p>
-        <p className="truncate text-[11px] leading-tight text-white/70">
+        <p className="truncate text-[10px] leading-tight text-white/70 sm:text-[11px]">
           {showGender && `${genderLabels[profile.gender] ?? profile.gender} · `}
           {profile.city} · {lookingForLabels[profile.lookingFor] ?? profile.lookingFor}
         </p>
@@ -80,7 +80,7 @@ export default function ProfileTile({
         <button
           onClick={onAction}
           disabled={disabled}
-          className={`pointer-events-auto mt-2.5 w-full rounded-full py-2 text-xs font-medium text-white backdrop-blur-md transition ${
+          className={`pointer-events-auto mt-1.5 w-full rounded-full py-1.5 text-[11px] font-medium sm:mt-2.5 sm:py-2 sm:text-xs text-white backdrop-blur-md transition ${
             actionTone === "liked"
               ? "cursor-default bg-gold/80"
               : `bg-white/15 disabled:opacity-50 ${

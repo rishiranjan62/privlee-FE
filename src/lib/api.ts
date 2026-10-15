@@ -13,6 +13,13 @@ import type {
   AdminPhoto,
   AdminUserDetail,
   AdminUserSummary,
+  LedgerPage,
+  MemberInvoice,
+  PaymentFilters,
+  PaymentOrderPage,
+  PaymentsSummary,
+  UserFacets,
+  UserListQuery,
   EvidenceResponse,
   ModerationActionCode,
   ReportDetail,
@@ -153,6 +160,12 @@ export const WALLET_CHANGED = "privlee:wallet-changed";
 export const UNREAD_CHANGED = "privlee:unread-changed";
 /** Fired when a like is sent, so the daily allowance shown on screen is looked up again. */
 export const LIKE_SENT = "privlee:like-sent";
+
+/** The file name a download asks for, from its Content-Disposition header. */
+function filenameOf(header: unknown, fallback: string): string {
+  const m = typeof header === "string" ? /filename="?([^";]+)"?/.exec(header) : null;
+  return m ? m[1] : fallback;
+}
 
 function errorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
@@ -323,9 +336,16 @@ export const api = {
     }
   },
 
+  /** What asking to see someone's photos costs, in credits - matched or not. */
+  async getPhotoRequestCost(): Promise<number> {
+    const { data } = await client.get<{ cost: number }>("/photo-access/pricing");
+    return data.cost;
+  },
+
   async requestPhotoAccess(ownerId: string): Promise<void> {
     try {
       await client.post(`/photo-access/${ownerId}/request`);
+      window.dispatchEvent(new Event(WALLET_CHANGED));
     } catch (err) {
       throw new Error(errorMessage(err, "Could not send that request"));
     }
@@ -359,11 +379,61 @@ export const api = {
     return data;
   },
 
-  async setPhotoVisibility(photoId: string, blurred: boolean): Promise<Profile> {
-    const { data } = await client.put<Profile>(`/profiles/me/photos/${photoId}/visibility`, {
-      blurred,
-    });
+  /** Either setting may be left out to keep it. `privatePhoto: true` moves the photo into the private album. */
+  async setPhotoVisibility(
+    photoId: string,
+    change: { blurred?: boolean; privatePhoto?: boolean },
+  ): Promise<Profile> {
+    try {
+      const { data } = await client.put<Profile>(`/profiles/me/photos/${photoId}/visibility`, change);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not change that photo"));
+    }
+  },
+
+  // ---- the private album: nobody sees it unless the owner lets them in, or they pay to be let in
+
+  async getPrivatePhotoPricing(): Promise<{ unlockCost: number; requestCost: number }> {
+    const { data } = await client.get<{ unlockCost: number; requestCost: number }>("/private-photos/pricing");
     return data;
+  },
+
+  async requestPrivatePhotos(ownerId: string): Promise<void> {
+    try {
+      await client.post(`/private-photos/${ownerId}/request`);
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not send that request"));
+    }
+  },
+
+  /** Pays to see the album at once. */
+  async unlockPrivatePhotos(ownerId: string): Promise<void> {
+    try {
+      await client.post(`/private-photos/${ownerId}/unlock`);
+      window.dispatchEvent(new Event(WALLET_CHANGED));
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not unlock the private photos"));
+    }
+  },
+
+  async getIncomingPrivateRequests(): Promise<PhotoAccessRequest[]> {
+    const { data } = await client.get<PhotoAccessRequest[]>("/private-photos/incoming");
+    return data;
+  },
+
+  async getApprovedPrivateViewers(): Promise<PhotoAccessRequest[]> {
+    const { data } = await client.get<PhotoAccessRequest[]>("/private-photos/approved");
+    return data;
+  },
+
+  async respondToPrivateRequest(requestId: string, approve: boolean): Promise<void> {
+    await client.post(`/private-photos/${requestId}/${approve ? "approve" : "decline"}`);
+  },
+
+  async revokePrivateAccess(viewerId: string): Promise<void> {
+    await client.delete(`/private-photos/viewers/${viewerId}`);
   },
 
   async changePassword(currentPassword: string | null, newPassword: string): Promise<void> {
@@ -393,9 +463,10 @@ export const api = {
     return data;
   },
 
-  async uploadPhoto(file: File): Promise<Profile> {
+  async uploadPhoto(file: File, privatePhoto = false): Promise<Profile> {
     const form = new FormData();
     form.append("file", file);
+    if (privatePhoto) form.append("private", "true");
     const { data } = await client.post<Profile>("/profiles/me/photos", form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
@@ -536,6 +607,97 @@ export const api = {
     return data;
   },
 
+  // ---- admin: payments
+
+  async getPaymentsSummary(granularity: Granularity, from?: string, to?: string): Promise<PaymentsSummary> {
+    const { data } = await client.get<PaymentsSummary>("/admin/payments/summary", {
+      params: { granularity, ...(from ? { from } : {}), ...(to ? { to } : {}) },
+    });
+    return data;
+  },
+
+  async getPaymentOrders(filters: PaymentFilters, page: number, size = 25): Promise<PaymentOrderPage> {
+    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    const { data } = await client.get<PaymentOrderPage>("/admin/payments/orders", { params: { ...clean, page, size } });
+    return data;
+  },
+
+  /** The orders that match, as CSV text. */
+  async exportPaymentOrders(filters: PaymentFilters): Promise<string> {
+    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    const { data } = await client.get<string>("/admin/payments/orders/export", { params: clean, responseType: "text" });
+    return data;
+  },
+
+  async getCreditLedger(filters: { reason?: string; q?: string; from?: string; to?: string }, page: number, size = 25): Promise<LedgerPage> {
+    const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+    const { data } = await client.get<LedgerPage>("/admin/payments/ledger", { params: { ...clean, page, size } });
+    return data;
+  },
+
+  /** The invoice PDF for an order. Returns the file and the name to save it under. */
+  async downloadAdminInvoice(orderId: string): Promise<{ blob: Blob; filename: string }> {
+    const res = await client.get<Blob>(`/admin/payments/orders/${encodeURIComponent(orderId)}/invoice`, { responseType: "blob" });
+    return { blob: res.data, filename: filenameOf(res.headers["content-disposition"], "invoice.pdf") };
+  },
+
+  async issueInvoice(orderId: string): Promise<string> {
+    try {
+      const { data } = await client.post<{ invoiceNumber: string }>(`/admin/payments/orders/${encodeURIComponent(orderId)}/invoice`);
+      return data.invoiceNumber;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not issue the invoice"));
+    }
+  },
+
+  async emailInvoice(orderId: string): Promise<void> {
+    try {
+      await client.post(`/admin/payments/orders/${encodeURIComponent(orderId)}/invoice/email`);
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not send the invoice"));
+    }
+  },
+
+  /** Issues an invoice for every paid order that has none. Returns how many. */
+  async issueMissingInvoices(): Promise<number> {
+    try {
+      const { data } = await client.post<{ issued: number }>("/admin/payments/invoices/generate-missing");
+      return data.issued;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not issue the invoices"));
+    }
+  },
+
+  /** One line per invoice issued in the range (India dates), as CSV, for GST returns. */
+  async downloadGstRegister(from: string, to: string): Promise<string> {
+    const { data } = await client.get<string>("/admin/payments/invoices/register", { params: { from, to }, responseType: "text" });
+    return data;
+  },
+
+  // ---- a member's own invoices
+
+  async getMyInvoices(): Promise<MemberInvoice[]> {
+    const { data } = await client.get<MemberInvoice[]>("/payments/invoices");
+    return data;
+  },
+
+  async downloadMyInvoice(orderId: string): Promise<{ blob: Blob; filename: string }> {
+    const res = await client.get<Blob>(`/payments/invoices/${encodeURIComponent(orderId)}/pdf`, { responseType: "blob" });
+    return { blob: res.data, filename: filenameOf(res.headers["content-disposition"], "invoice.pdf") };
+  },
+
+  /** Asks Cashfree again about an unsettled order. Safe to repeat. */
+  async recheckPaymentOrder(orderId: string): Promise<{ orderId: string; status: string; message: string }> {
+    try {
+      const { data } = await client.post<{ orderId: string; status: string; message: string }>(
+        `/admin/payments/orders/${encodeURIComponent(orderId)}/recheck`,
+      );
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not check that order"));
+    }
+  },
+
   async getAuditFacets(): Promise<AuditFacets> {
     const { data } = await client.get<AuditFacets>("/admin/audit/facets");
     return data;
@@ -572,14 +734,25 @@ export const api = {
     }
   },
 
-  async searchUsers(q: string): Promise<AdminUserSummary[]> {
-    const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params: { q } });
+  async listUsers(query: UserListQuery): Promise<AdminUserSummary[]> {
+    const params = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== ""));
+    const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params });
     return data;
   },
 
-  async listUsers(filter: string): Promise<AdminUserSummary[]> {
-    const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params: { filter } });
+  async getUserFacets(): Promise<UserFacets> {
+    const { data } = await client.get<UserFacets>("/admin/users/facets");
     return data;
+  },
+
+  /** Gives a member credits; returns their new balance. */
+  async grantCredits(userId: string, amount: number, reason: string): Promise<number> {
+    try {
+      const { data } = await client.post<{ balance: number }>(`/admin/users/${userId}/credits`, { amount, reason });
+      return data.balance;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not give credits"));
+    }
   },
 
   /** Erases a suspected minor's data and bans the account. Irreversible. */
@@ -709,6 +882,16 @@ export const api = {
       await client.delete(`/matches/${matchId}/messages/${messageId}`, { params: { scope } });
     } catch (err) {
       throw new Error(errorMessage(err, "That message couldn't be deleted. Please try again."));
+    }
+  },
+
+  /** Changes the words of a text message you sent. Returns it as it now reads. */
+  async editMessage(matchId: string, messageId: string, content: string): Promise<Message> {
+    try {
+      const { data } = await client.patch<Message>(`/matches/${matchId}/messages/${messageId}`, { content });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "That message couldn't be edited. Please try again."));
     }
   },
 

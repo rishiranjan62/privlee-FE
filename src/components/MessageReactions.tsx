@@ -10,6 +10,10 @@ interface Props {
   onReply: () => void;
   /** Deletes it: "me" for your own view, "everyone" (your own messages only) for both of you. */
   onDelete: (scope: "me" | "everyone") => void;
+  /** Starts editing it. Only passed for a text message of your own. */
+  onEdit?: () => void;
+  /** Small print under the message: when it was sent. */
+  footer?: ReactNode;
   children: ReactNode;
 }
 
@@ -18,7 +22,7 @@ interface Props {
  * with a mouse) that opens the row of emotions, and a double-click as the quick heart. What has been left shows as
  * little chips underneath, yours highlighted.
  */
-export default function MessageReactions({ message, mine, onReact, onReply, onDelete, children }: Props) {
+export default function MessageReactions({ message, mine, onReact, onReply, onDelete, onEdit, footer, children }: Props) {
   const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
   // Deleting for everyone cannot be undone, so it asks once more.
@@ -62,6 +66,19 @@ export default function MessageReactions({ message, mine, onReact, onReply, onDe
         >
           ↩
         </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Edit this message"
+            title="Edit"
+            className="shrink-0 rounded-full border border-line bg-white/80 px-2 py-1 text-sm leading-none opacity-0 transition hover:border-gold focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-60"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -87,6 +104,8 @@ export default function MessageReactions({ message, mine, onReact, onReply, onDe
           </svg>
         </button>
       </div>
+
+      {footer && <div className={`mt-0.5 px-2 text-[11px] text-muted ${mine ? "text-right" : "text-left"}`}>{footer}</div>}
 
       {more && (
         <div

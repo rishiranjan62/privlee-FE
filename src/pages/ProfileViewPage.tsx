@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
+import PhotoGallery from "../components/PhotoGallery";
+import PrivateAlbumSection from "../components/PrivateAlbumSection";
 import ProfileActionsMenu from "../components/ProfileActionsMenu";
 import { useStreamEvent } from "../context/StreamContext";
 import LikeAllowanceNote from "../components/LikeAllowanceNote";
@@ -67,6 +69,8 @@ export default function ProfileViewPage() {
   const allowance = useLikeAllowance();
   // Writing to someone you have not matched with: what it costs, and the note being written.
   const [startCost, setStartCost] = useState<number | null>(null);
+  const [photoCost, setPhotoCost] = useState<number | null>(null);
+  const [askError, setAskError] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [note, setNote] = useState("");
   const [messaging, setMessaging] = useState(false);
@@ -95,6 +99,8 @@ export default function ProfileViewPage() {
     if (
       event.type === "PHOTO_ACCESS_GRANTED" ||
       event.type === "PHOTO_ACCESS_REVOKED" ||
+      event.type === "PRIVATE_ACCESS_GRANTED" ||
+      event.type === "PRIVATE_ACCESS_REVOKED" ||
       event.type === "MATCH"
     ) {
       load(false);
@@ -104,16 +110,20 @@ export default function ProfileViewPage() {
   async function askForPhotos() {
     if (!userId) return;
     setAskState("sending");
+    setAskError(null);
     try {
       await api.requestPhotoAccess(userId);
       setAskState("sent");
-    } catch {
+    } catch (err) {
+      // The server's words matter here: "You need 50 credits and have 10" is something they can act on.
+      setAskError(err instanceof Error ? err.message : null);
       setAskState("error");
     }
   }
 
   useEffect(() => {
     api.getStartPricing().then((p) => setStartCost(p.textCost)).catch(() => setStartCost(null));
+    api.getPhotoRequestCost().then(setPhotoCost).catch(() => setPhotoCost(null));
   }, []);
 
   async function sendNote() {
@@ -222,7 +232,7 @@ export default function ProfileViewPage() {
           <p className="text-sm text-muted">
             {askState === "sent" || profile.photoAccess === "PENDING"
               ? `${profile.pseudonym} has been asked. You'll see their photos if they say yes.`
-              : `${profile.pseudonym}'s photos are blurred. You can ask to see them.`}
+              : `${profile.pseudonym}'s photos are blurred. You can ask to see them${photoCost ? `, for ${photoCost} credits (not returned if they say no)` : ""}.`}
           </p>
           {askState !== "sent" && profile.photoAccess !== "PENDING" && (
             <button
@@ -230,18 +240,34 @@ export default function ProfileViewPage() {
               disabled={askState === "sending"}
               className="shrink-0 rounded-full border border-line bg-white px-5 py-2 text-sm font-medium text-gold transition hover:border-gold disabled:opacity-60"
             >
-              {askState === "sending" ? "Asking..." : "Ask to see photos"}
+              {askState === "sending" ? "Asking..." : photoCost ? `Ask to see photos · ${photoCost} credits` : "Ask to see photos"}
             </button>
           )}
         </div>
       )}
       {askState === "error" && (
-        <p className="text-sm text-danger">Could not send that request. Try again.</p>
+        <p className="text-sm text-danger">{askError ?? "Could not send that request. Try again."}</p>
       )}
       {profile.photoAccess === "APPROVED" && profile.photos.length > 0 && (
         <p className="text-sm italic text-muted">
           {profile.pseudonym} let you see their photos.
         </p>
+      )}
+
+      {/* Everything you may see: all the photos, not only the main one. */}
+      {profile.photos.length > 1 && (
+        <Section title="Photos">
+          <PhotoGallery photos={profile.photos} label={`${profile.pseudonym}'s photos`} />
+        </Section>
+      )}
+
+      {profile.privateAlbum && (
+        <PrivateAlbumSection
+          ownerId={profile.userId}
+          pseudonym={profile.pseudonym}
+          album={profile.privateAlbum}
+          onChanged={() => load(false)}
+        />
       )}
 
       {profile.bio && <Section title="About">{<p className="leading-relaxed">{profile.bio}</p>}</Section>}
