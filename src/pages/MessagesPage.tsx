@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { rememberHidden } from "../lib/adMemory";
 import { revealScrollbar } from "../lib/scroll";
 import { useStreamEvent } from "../context/StreamContext";
 import { tintFor } from "../lib/avatar";
 import ChatThread from "../components/ChatThread";
+import { SponsoredListRow } from "../components/SponsoredSlot";
 import { GIFT_EMOJI, GIFT_LABELS } from "../lib/labels";
-import type { Conversation, Message } from "../lib/types";
+import type { Conversation, Message, ServedAd } from "../lib/types";
 
 function shortAgo(iso: string): string {
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -33,6 +35,10 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const myId = localStorage.getItem("dd_user_id");
+  // Sponsored rows between conversations. Asked for once, and only when the list is long enough to show them: asking is
+  // what counts an ad as shown.
+  const [ads, setAds] = useState<ServedAd[]>([]);
+  const adsAsked = useRef(false);
 
   const load = useCallback(() => {
     api.getConversations().then(setConversations).catch(() => setConversations([]));
@@ -41,7 +47,20 @@ export default function MessagesPage() {
   useEffect(load, [load]);
   useStreamEvent(load);
 
+  // The server decides how many rows there are room for and where each goes (the admin's settings), from the number of conversations.
+  const conversationCount = conversations?.length ?? 0;
+  useEffect(() => {
+    if (conversationCount === 0 || adsAsked.current) return;
+    adsAsked.current = true;
+    api.getAds("MESSAGES", 1, conversationCount).then(setAds).catch(() => {});
+  }, [conversationCount]);
+
   const active = conversations?.find((c) => c.matchId === matchId);
+
+  function hideAd(id: string) {
+    rememberHidden(id);
+    setAds((prev) => prev.filter((a) => a.id !== id));
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -73,12 +92,13 @@ export default function MessagesPage() {
               {conversations === null ? (
                 <li className="px-4 py-8 text-center text-sm text-muted">Loading...</li>
               ) : (
-                conversations.map((c) => {
+                conversations.flatMap((c, index) => {
                   const photo = c.otherUser.photos.find((p) => p.primary) ?? c.otherUser.photos[0];
                   const mine = c.lastMessage?.senderId === myId;
                   const unread = c.unreadCount > 0;
                   const selected = c.matchId === matchId;
-                  return (
+                  const ad = ads.find((a) => a.position === index);
+                  const row = (
                     <li key={c.matchId} className="border-b border-line/70 last:border-b-0">
                       <button
                         onClick={() => navigate(`/messages/${c.matchId}`)}
@@ -131,6 +151,14 @@ export default function MessagesPage() {
                       </button>
                     </li>
                   );
+                  return ad
+                    ? [
+                        row,
+                        <li key={`ad-${ad.id}`} className="border-b border-line/70">
+                          <SponsoredListRow ad={ad} onHide={() => hideAd(ad.id)} />
+                        </li>,
+                      ]
+                    : [row];
                 })
               )}
             </ul>

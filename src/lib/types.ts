@@ -793,3 +793,138 @@ export interface PaymentFilters {
   from?: string;
   to?: string;
 }
+
+// --- Sponsored placements ---------------------------------------------------------------------------------------
+
+export type AdPlacement = "DISCOVER" | "LIKES" | "MATCHES" | "MESSAGES" | "CONVERSATION";
+
+/** What a member's screen is given. The paths are relative to the API address. */
+export interface ServedAd {
+  id: string;
+  title: string;
+  body: string | null;
+  ctaLabel: string;
+  imagePath: string | null;
+  clickPath: string;
+  label: string;
+  /** Messages list only: the (zero-based) conversation this row goes under. */
+  position?: number | null;
+}
+
+export interface AdCounts {
+  impressions: number;
+  clicks: number;
+}
+
+export type AdStatus = "RUNNING" | "SCHEDULED" | "PAUSED" | "ENDED" | "LIMIT_REACHED";
+
+export interface AdminAd {
+  id: string;
+  advertiser: string;
+  title: string;
+  body: string | null;
+  ctaLabel: string;
+  targetUrl: string;
+  /** Every place the ad runs in, in the fixed order Discover, Likes, Matches, Messages. */
+  placements: AdPlacement[];
+  /** Where the ad is aimed; empty means everyone. */
+  locations: { key: string; label: string }[];
+  startsAt: string;
+  endsAt: string | null;
+  active: boolean;
+  weight: number;
+  /** Most showings of this ad per person per day; null = no limit. */
+  maxPerDay: number | null;
+  /** Hours before the same person is shown it again; null = no wait. */
+  minGapHours: number | null;
+  impressionCap: number | null;
+  remaining: number | null;
+  hasImage: boolean;
+  imagePath: string | null;
+  status: AdStatus;
+  total: AdCounts;
+  today: AdCounts;
+  last7Days: AdCounts;
+  web: AdCounts;
+  android: AdCounts;
+  /** The same totals place by place; empty until the ad has been shown. */
+  byPlacement: { placement: AdPlacement; counts: AdCounts }[];
+}
+
+export interface AdDay {
+  day: string;
+  impressionsWeb: number;
+  impressionsAndroid: number;
+  clicksWeb: number;
+  clicksAndroid: number;
+}
+
+export interface AdsOverview {
+  summary: {
+    runningNow: number;
+    totalCampaigns: number;
+    today: AdCounts;
+    last7Days: AdCounts;
+    last30Days: AdCounts;
+    web30Days: AdCounts;
+    android30Days: AdCounts;
+    daily: AdDay[];
+    byPlacement: { placement: AdPlacement; last30Days: AdCounts }[];
+  };
+  ads: AdminAd[];
+  settings: AdSettings;
+  /** True when the server itself has ads switched off (ADS_ENABLED=false), whatever the settings say. */
+  switchedOffOnServer: boolean;
+  maxImageKb: number;
+}
+
+/** The rules that apply to every ad, edited on the Ads page. */
+export interface AdSettings {
+  enabled: boolean;
+  maxPerDayAnyAd: number;
+  newMemberGraceHours: number;
+  adFreeDaysAfterPurchase: number;
+  messagesFirstAfter: number;
+  messagesEvery: number;
+  messagesMaxRows: number;
+  messagesShortListRow: boolean;
+  /** Inside a conversation: after this message, then every so many, at most this many in one conversation, latest messages kept clear. */
+  chatFirstAfter: number;
+  chatEvery: number;
+  chatMaxRows: number;
+  chatKeepLatestClear: number;
+  disabledPlacements: AdPlacement[];
+}
+
+/** What the admin form sends. Dates are ISO strings in UTC, or empty. */
+export interface AdForm {
+  advertiser: string;
+  title: string;
+  body: string;
+  ctaLabel: string;
+  targetUrl: string;
+  placements: AdPlacement[];
+  /** Location keys such as "state:karnataka" and "city:bengaluru"; empty means everyone. */
+  locations: string[];
+  startsAt: string;
+  endsAt: string;
+  weight: number;
+  impressionCap: string;
+  maxPerDay: string;
+  minGapHours: string;
+}
+
+/** A state or city an ad can be aimed at. `state` is the key of the state a city is in. */
+export interface AdLocationOption {
+  key: string;
+  label: string;
+  kind: "state" | "city";
+  state: string | null;
+  /** Other names for the same city, for searching (Bangalore for Bengaluru). */
+  aliases: string[];
+}
+
+export interface AdReach {
+  members: number;
+  total: number;
+}

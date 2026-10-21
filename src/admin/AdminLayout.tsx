@@ -16,6 +16,7 @@ const links = [
   { to: "/admin/photos", label: "Recent photos", end: false },
   { to: "/admin/analytics", label: "Analytics", end: false },
   { to: "/admin/payments", label: "Payments", end: false },
+  { to: "/admin/ads", label: "Ads", end: false },
   { to: "/admin/app", label: "App", end: false },
   { to: "/admin/audit", label: "Audit log", end: false },
 ];

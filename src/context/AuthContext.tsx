@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { endSession, tokenStore } from "../lib/api";
+import { usageTracker } from "../lib/usage";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -32,6 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserId(newUserId);
       },
       logout: () => {
+        // Send the last time-in-app report while the token is still there; afterwards the server can only refuse it.
+        usageTracker.stop();
         endSession();
         tokenStore.clear();
         localStorage.removeItem("dd_pseudonym");

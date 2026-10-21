@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import ProfileTile from "../components/ProfileTile";
+import SponsoredSlot from "../components/SponsoredSlot";
 import { tileGrid } from "../lib/ui";
 import type { MatchSummary } from "../lib/types";
 
@@ -68,6 +69,7 @@ export default function MatchesPage() {
           />
         ))}
       </ul>
+      <SponsoredSlot placement="MATCHES" className="mt-10" />
     </>
   );
 }
