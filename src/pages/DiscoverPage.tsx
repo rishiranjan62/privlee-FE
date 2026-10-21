@@ -3,6 +3,7 @@ import { api } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import type { Gender, Profile } from "../lib/types";
 import DiscoverySection from "../components/DiscoverySection";
+import SponsoredSlot from "../components/SponsoredSlot";
 import LikeAllowanceNote from "../components/LikeAllowanceNote";
 import { paidLikeQuestion, useLikeAllowance } from "../lib/useLikeAllowance";
 
@@ -197,6 +198,7 @@ export default function DiscoverPage() {
         emptyLabel="No one nearby yet."
         onLike={handleLike}
       />
+      <SponsoredSlot placement="DISCOVER" />
       <DiscoverySection
         title="New here"
         subtitle="Recently joined"

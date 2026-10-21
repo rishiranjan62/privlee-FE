@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import ProfileTile from "../components/ProfileTile";
+import SponsoredSlot from "../components/SponsoredSlot";
 import { tileGrid } from "../lib/ui";
 import { lookingForLabels } from "../lib/labels";
 import type { Admirer, Profile } from "../lib/types";
@@ -152,6 +153,7 @@ export default function LikesPage() {
           ))}
         </ul>
       )}
+      <SponsoredSlot placement="LIKES" className="mt-12" />
     </div>
   );
 }

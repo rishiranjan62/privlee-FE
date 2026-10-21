@@ -10,7 +10,9 @@ import MessageReactions from "./MessageReactions";
 import ReplyQuote from "./ReplyQuote";
 import { GIFT_EMOJI, GIFT_LABELS } from "../lib/labels";
 import { dayKey, dayLabel, messageFullTime, messageTime } from "../lib/chatTime";
-import type { GiftKey, Message } from "../lib/types";
+import type { GiftKey, Message, ServedAd } from "../lib/types";
+import { rememberHidden } from "../lib/adMemory";
+import { SponsoredChatRow } from "./SponsoredSlot";
 
 interface Props {
   matchId: string;
@@ -28,6 +30,10 @@ export default function ChatThread({ matchId, onActivity }: Props) {
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // An ad between two messages: asked for once per conversation, once it has messages, and fixed to the message it goes under so it
+  // stays put as new messages arrive. Only the number of messages is sent to ask - never what they say.
+  const [chatAd, setChatAd] = useState<{ ad: ServedAd; afterId: string } | null>(null);
+  const adAskedFor = useRef<string | null>(null);
   const activity = useRef(onActivity);
   activity.current = onActivity;
 
@@ -41,7 +47,23 @@ export default function ChatThread({ matchId, onActivity }: Props) {
   }, [matchId]);
 
   useEffect(() => {
+    if (messages.length === 0 || adAskedFor.current === matchId) return;
+    adAskedFor.current = matchId;
+    api
+      .getAds("CONVERSATION", 1, undefined, messages.length)
+      .then((ads) => {
+        const ad = ads[0];
+        const anchor = ad && ad.position != null ? messages[ad.position] : undefined;
+        if (ad && anchor) setChatAd({ ad, afterId: anchor.id });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchId, messages.length > 0]);
+
+  useEffect(() => {
     setMessages([]);
+    setChatAd(null);
+    adAskedFor.current = null;
     reload();
     api.markConversationRead(matchId).then(() => activity.current?.()).catch(() => {});
 
@@ -308,6 +330,15 @@ export default function ChatThread({ matchId, onActivity }: Props) {
                   {renderBody(m, mine)}
                 </MessageReactions>
               </div>
+              {chatAd?.afterId === m.id && (
+                <SponsoredChatRow
+                  ad={chatAd.ad}
+                  onHide={() => {
+                    rememberHidden(chatAd.ad.id);
+                    setChatAd(null);
+                  }}
+                />
+              )}
             </div>
           );
         })}

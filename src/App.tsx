@@ -35,6 +35,7 @@ const AuditLogPage = lazy(() => import("./admin/AuditLogPage"));
 const AnalyticsPage = lazy(() => import("./admin/AnalyticsPage"));
 const PaymentsPage = lazy(() => import("./admin/PaymentsPage"));
 const AppReleasesPage = lazy(() => import("./admin/AppReleasesPage"));
+const AdsPage = lazy(() => import("./admin/AdsPage"));
 const ReportsPage = lazy(() => import("./admin/ReportsPage"));
 const UsersPage = lazy(() => import("./admin/UsersPage"));
 const UserDetailPage = lazy(() => import("./admin/UserDetailPage"));
@@ -212,6 +213,20 @@ function AppRoutes() {
                   {(me) => (
                     <AdminLayout me={me}>
                       <RecentPhotosPage />
+                    </AdminLayout>
+                  )}
+                </AdminGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/ads"
+            element={
+              <ProtectedRoute>
+                <AdminGuard>
+                  {(me) => (
+                    <AdminLayout me={me}>
+                      <AdsPage />
                     </AdminLayout>
                   )}
                 </AdminGuard>

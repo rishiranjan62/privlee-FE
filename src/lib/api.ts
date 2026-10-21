@@ -1,10 +1,20 @@
 import { API_ORIGIN } from "./apiBase";
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { tokenExpired } from "./jwt";
+import { adMemoryQuery, rememberShown } from "./adMemory";
 import type {
   AndroidRelease,
+  AdDay,
+  AdSettings,
+  AdForm,
+  AdLocationOption,
+  AdReach,
+  AdminAd,
+  AdPlacement,
+  AdsOverview,
   AppReleaseInfo,
   AppReleasesOverview,
+  ServedAd,
   AuthResponse,
   GoogleLoginResult,
   GoogleSignupPayload,
@@ -61,7 +71,13 @@ const TOKEN_KEY = "dd_token";
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY),
   set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  clear: () => {
+    localStorage.removeItem(TOKEN_KEY);
+    // index.html marks the page "signed in" at load to hide the pre-written landing page, and that rule also
+    // matches the login page (same .landing class). Signing out moves to /login without a reload, so the mark
+    // has to come off here or the login page is there but hidden - a blank screen.
+    document.documentElement.removeAttribute("data-signed-in");
+  },
 };
 
 // withCredentials lets the API's small age-check cookie travel between privlee.com and api.privlee.com
@@ -72,7 +88,8 @@ client.interceptors.request.use((config) => {
   // Lets the server's log tell the website from the Android app.
   config.headers["X-Privlee-Client"] = "web";
   const token = tokenStore.get();
-  if (token) {
+  // A request that already carries its own token (reportUsage, sent as someone signs out) keeps it.
+  if (token && !config.headers.Authorization) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -182,6 +199,103 @@ export const api = {
   async getAndroidRelease(): Promise<AndroidRelease> {
     const { data } = await client.get<AndroidRelease>("/app/android");
     return data;
+  },
+
+  // --- sponsored placements -------------------------------------------------------------------------------------
+
+  /** The sponsored item for a screen, or none. Asking is what counts it as shown. */
+  async getAds(placement: AdPlacement, limit = 1, conversations?: number, messages?: number): Promise<ServedAd[]> {
+    // The browser's own memory of what it has shown goes along, so the server can avoid repeats; see lib/adMemory. For the Messages
+    // list the server is told how many conversations there are and decides how many rows fit and where each goes.
+    const { data } = await client.get<ServedAd[]>("/ads", {
+      // Only a count: what the messages say, and who they are with, never leaves the page.
+      params: {
+        placement,
+        limit,
+        ...(conversations === undefined ? {} : { conversations }),
+        ...(messages === undefined ? {} : { messages }),
+        ...adMemoryQuery(),
+      },
+    });
+    rememberShown(data.map((a) => a.id));
+    return data;
+  },
+
+  /** Every state, and every listed city, an ad can be aimed at. */
+  async getAdLocations(): Promise<AdLocationOption[]> {
+    const { data } = await client.get<AdLocationOption[]>("/admin/ads/locations");
+    return data;
+  },
+
+  /** How many current members an aim reaches. */
+  async getAdReach(locations: string[]): Promise<AdReach> {
+    const { data } = await client.get<AdReach>("/admin/ads/reach", { params: { locations: locations.join(",") } });
+    return data;
+  },
+
+  async saveAdSettings(settings: AdSettings): Promise<AdSettings> {
+    try {
+      const { data } = await client.put<AdSettings>("/admin/ads/settings", settings);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not save the settings"));
+    }
+  },
+
+  async getAdsOverview(): Promise<AdsOverview> {
+    const { data } = await client.get<AdsOverview>("/admin/ads");
+    return data;
+  },
+
+  async getAdDaily(id: string, days = 30): Promise<AdDay[]> {
+    const { data } = await client.get<AdDay[]>(`/admin/ads/${id}/daily`, { params: { days } });
+    return data;
+  },
+
+  async saveAd(id: string | null, form: AdForm, image: File | null, removeImage: boolean): Promise<AdminAd> {
+    const body = new FormData();
+    body.append("advertiser", form.advertiser);
+    body.append("title", form.title);
+    body.append("body", form.body);
+    body.append("ctaLabel", form.ctaLabel);
+    body.append("targetUrl", form.targetUrl);
+    body.append("placements", form.placements.join(","));
+    body.append("locations", form.locations.join(","));
+    body.append("startsAt", form.startsAt);
+    body.append("endsAt", form.endsAt);
+    body.append("weight", String(form.weight));
+    if (form.impressionCap.trim()) body.append("impressionCap", form.impressionCap.trim());
+    if (form.maxPerDay.trim()) body.append("maxPerDay", form.maxPerDay.trim());
+    if (form.minGapHours.trim()) body.append("minGapHours", form.minGapHours.trim());
+    if (image) body.append("image", image);
+    try {
+      if (id) {
+        body.append("removeImage", String(removeImage));
+        const { data } = await client.put<AdminAd>(`/admin/ads/${id}`, body);
+        return data;
+      }
+      const { data } = await client.post<AdminAd>("/admin/ads", body);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not save that ad"));
+    }
+  },
+
+  async setAdActive(id: string, active: boolean): Promise<AdminAd> {
+    try {
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/${active ? "resume" : "pause"}`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not change that ad"));
+    }
+  },
+
+  async deleteAd(id: string): Promise<void> {
+    try {
+      await client.delete(`/admin/ads/${id}`);
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not delete that ad"));
+    }
   },
 
   async getAppReleases(): Promise<AppReleasesOverview> {
@@ -498,7 +612,10 @@ export const api = {
   },
 
   async reportUsage(seconds: number): Promise<void> {
-    await client.post("/presence/usage", { seconds });
+    // The token is read now, not when axios gets round to sending: on sign-out the last report is sent just
+    // before the token is cleared, and by the time the request is actually built it would be gone.
+    const token = tokenStore.get();
+    await client.post("/presence/usage", { seconds }, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   },
 
   async getTraffic(granularity: Granularity, from?: string, to?: string): Promise<Traffic> {
