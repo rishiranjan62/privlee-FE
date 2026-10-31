@@ -6,6 +6,7 @@ import { revealScrollbar } from "../lib/scroll";
 import { useStreamEvent } from "../context/StreamContext";
 import { tintFor } from "../lib/avatar";
 import ChatThread from "../components/ChatThread";
+import { lastActiveLabel } from "../lib/lastActive";
 import { SponsoredListRow } from "../components/SponsoredSlot";
 import { GIFT_EMOJI, GIFT_LABELS } from "../lib/labels";
 import type { Conversation, Message, ServedAd } from "../lib/types";
@@ -46,6 +47,13 @@ export default function MessagesPage() {
 
   useEffect(load, [load]);
   useStreamEvent(load);
+  // "Active 5 min ago" in the header goes stale on its own: read it again every couple of minutes while the page is open and visible.
+  useEffect(() => {
+    const tick = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 120_000);
+    return () => clearInterval(tick);
+  }, [load]);
 
   // The server decides how many rows there are room for and where each goes (the admin's settings), from the number of conversations.
   const conversationCount = conversations?.length ?? 0;
@@ -185,6 +193,15 @@ export default function MessagesPage() {
                         {active.otherUser.pseudonym}
                       </Link>
                       <span className="text-xs text-muted">{active.otherUser.city}</span>
+                      {lastActiveLabel(active.otherUser.lastActiveAt) && (
+                        <span
+                          className={`text-xs ${
+                            lastActiveLabel(active.otherUser.lastActiveAt) === "Active now" ? "text-gold" : "text-muted"
+                          }`}
+                        >
+                          · {lastActiveLabel(active.otherUser.lastActiveAt)}
+                        </span>
+                      )}
                     </>
                   )}
                   <span className="basis-full text-[11px] text-muted sm:ml-auto sm:basis-auto">

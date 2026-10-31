@@ -10,6 +10,11 @@ import type {
   AdLocationOption,
   AdReach,
   AdminAd,
+  AdReport,
+  AdRedemption,
+  AdFlag,
+  AdPolicy,
+  AdHoldoutReport,
   AdPlacement,
   AdsOverview,
   AppReleaseInfo,
@@ -215,10 +220,153 @@ export const api = {
         ...(conversations === undefined ? {} : { conversations }),
         ...(messages === undefined ? {} : { messages }),
         ...adMemoryQuery(),
+        // This page reports whether an ad was really on screen (lib/adEvents), so the "seen" rate can be worked out fairly.
+        m: 1,
       },
     });
     rememberShown(data.map((a) => a.id));
     return data;
+  },
+
+  /** "Show code": asks for an offer's code. The server counts the tap; the code is not in the ad itself. */
+  async revealAdCode(id: string, placement: AdPlacement): Promise<string> {
+    const { data } = await client.post<{ code: string }>(`/ads/${id}/reveal`, null, { params: { in: placement } });
+    return data.code;
+  },
+
+  async getAdRedemptions(id: string): Promise<AdRedemption[]> {
+    const { data } = await client.get<AdRedemption[]>(`/admin/ads/${id}/redemptions`);
+    return data;
+  },
+
+  async addAdRedemption(id: string, entry: { day: string; count: number; note: string }): Promise<AdRedemption[]> {
+    try {
+      const { data } = await client.post<AdRedemption[]>(`/admin/ads/${id}/redemptions`, entry);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not add that"));
+    }
+  },
+
+  async deleteAdRedemption(id: string, redemptionId: string): Promise<AdRedemption[]> {
+    try {
+      const { data } = await client.delete<AdRedemption[]>(`/admin/ads/${id}/redemptions/${redemptionId}`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not remove that"));
+    }
+  },
+
+  /** "Report this ad": the reason, an optional note and the screen. Kept without who sent it. */
+  async reportAdProblem(id: string, report: { reason: string; note: string; placement: AdPlacement }): Promise<void> {
+    await client.post(`/ads/${id}/report`, report);
+  },
+
+  async approveAd(id: string): Promise<AdminAd> {
+    try {
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/approve`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not approve that ad"));
+    }
+  },
+
+  async rejectAd(id: string, note: string): Promise<AdminAd> {
+    try {
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/reject`, null, { params: { note } });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not reject that ad"));
+    }
+  },
+
+  /** Adds, changes, pauses, resumes or deletes one of an ad's other creatives (B to D). */
+  async saveAdCreative(id: string, label: string | null, form: { title: string; body: string; ctaLabel: string }, image: File | null, removeImage: boolean): Promise<AdminAd> {
+    const body = new FormData();
+    body.append("title", form.title);
+    body.append("body", form.body);
+    body.append("ctaLabel", form.ctaLabel);
+    if (image) body.append("image", image);
+    try {
+      if (label) {
+        body.append("removeImage", String(removeImage));
+        const { data } = await client.put<AdminAd>(`/admin/ads/${id}/creatives/${label}`, body);
+        return data;
+      }
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/creatives`, body);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not save that creative"));
+    }
+  },
+
+  async setAdCreativeActive(id: string, label: string, active: boolean): Promise<AdminAd> {
+    try {
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/creatives/${label}/${active ? "resume" : "pause"}`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not change that creative"));
+    }
+  },
+
+  async deleteAdCreative(id: string, label: string): Promise<AdminAd> {
+    try {
+      const { data } = await client.delete<AdminAd>(`/admin/ads/${id}/creatives/${label}`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not delete that creative"));
+    }
+  },
+
+  async setAdAutoOptimise(id: string, on: boolean): Promise<AdminAd> {
+    try {
+      const { data } = await client.put<AdminAd>(`/admin/ads/${id}/optimise`, null, { params: { on } });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not change that"));
+    }
+  },
+
+  async getAdFlags(id: string): Promise<AdFlag[]> {
+    const { data } = await client.get<AdFlag[]>(`/admin/ads/${id}/reports`);
+    return data;
+  },
+
+  async dismissAdFlags(id: string): Promise<AdFlag[]> {
+    try {
+      const { data } = await client.post<AdFlag[]>(`/admin/ads/${id}/reports/dismiss`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not dismiss those"));
+    }
+  },
+
+  async saveAdPolicy(policy: AdPolicy): Promise<AdPolicy> {
+    try {
+      const { data } = await client.put<AdPolicy>("/admin/ads/policy", policy);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not save the policy"));
+    }
+  },
+
+  async getAdHoldout(): Promise<AdHoldoutReport> {
+    const { data } = await client.get<AdHoldoutReport>("/admin/ads/holdout");
+    return data;
+  },
+
+  async restartAdHoldout(): Promise<AdHoldoutReport> {
+    try {
+      const { data } = await client.post<AdHoldoutReport>("/admin/ads/policy/holdout/restart");
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not start a new test"));
+    }
+  },
+
+  /** What the page saw happen to ads it showed. Totals only: nothing says who. */
+  async reportAdEvents(events: { ad: string; placement: AdPlacement; type: "SEEN" | "HIDE"; variant?: string }[]): Promise<void> {
+    await client.post("/ads/events", { events });
   },
 
   /** Every state, and every listed city, an ad can be aimed at. */
@@ -267,6 +415,19 @@ export const api = {
     if (form.impressionCap.trim()) body.append("impressionCap", form.impressionCap.trim());
     if (form.maxPerDay.trim()) body.append("maxPerDay", form.maxPerDay.trim());
     if (form.minGapHours.trim()) body.append("minGapHours", form.minGapHours.trim());
+    if (form.priceModel) {
+      body.append("priceModel", form.priceModel);
+      body.append("priceRupees", form.priceRupees.trim());
+    }
+    body.append("offerText", form.offerText.trim());
+    body.append("offerCode", form.offerCode.trim());
+    body.append("trackConversions", String(form.trackConversions));
+    body.append("category", form.category || "OTHER");
+    body.append("daysMask", String(form.daysMask));
+    if (form.hoursFrom.trim() && form.hoursTo.trim()) {
+      body.append("hoursFrom", form.hoursFrom.trim());
+      body.append("hoursTo", form.hoursTo.trim());
+    }
     if (image) body.append("image", image);
     try {
       if (id) {
@@ -279,6 +440,42 @@ export const api = {
     } catch (err) {
       throw new Error(errorMessage(err, "Could not save that ad"));
     }
+  },
+
+  /** Makes the advertiser's read-only link, or replaces it (the old one stops working). */
+  async newAdReportLink(id: string): Promise<AdminAd> {
+    try {
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/report-link`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not make that link"));
+    }
+  },
+
+  async endAdReportLink(id: string): Promise<AdminAd> {
+    try {
+      const { data } = await client.delete<AdminAd>(`/admin/ads/${id}/report-link`);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not end that link"));
+    }
+  },
+
+  async extendAdReportLink(id: string, days: number): Promise<AdminAd> {
+    try {
+      const { data } = await client.post<AdminAd>(`/admin/ads/${id}/report-link/extend`, null, { params: { days } });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not extend that link"));
+    }
+  },
+
+  /** An advertiser's report, opened with the secret from their link. No sign-in. */
+  async getAdReport(token: string): Promise<AdReport> {
+    // Not through the app's own request layer: this page is for people who are not signed in, and a stale sign-in saved in the browser
+    // (an admin trying the link) must neither be sent with it nor send the visitor to the login page.
+    const { data } = await axios.get<AdReport>(`${API_ORIGIN}/api/ad-reports`, { params: { t: token }, headers: { "X-Privlee-Client": "web" } });
+    return data;
   },
 
   async setAdActive(id: string, active: boolean): Promise<AdminAd> {

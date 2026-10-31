@@ -36,6 +36,7 @@ function editableFingerprint(p: Profile): string {
     p.relationshipStatus,
     p.city,
     p.discreetMode,
+    p.showLastActive ?? true,
     [...p.interests].sort(),
     p.smoking,
     p.drinking,
@@ -95,6 +96,7 @@ export default function ProfilePage() {
         relationshipStatus: profile.relationshipStatus,
         city: profile.city,
         discreetMode: profile.discreetMode,
+        showLastActive: profile.showLastActive ?? true,
         interestedIn: profile.interestedIn ?? [],
         interests: profile.interests,
         smoking: profile.smoking,
@@ -288,6 +290,35 @@ export default function ProfilePage() {
             <span
               className={`h-6 w-6 rounded-full transition-transform duration-300 ${
                 profile.discreetMode ? "translate-x-6 bg-gold" : "translate-x-0 bg-white"
+              }`}
+            />
+          </span>
+        </button>
+      </section>
+
+      <section className={`${cardClass} p-7`}>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={profile.showLastActive ?? true}
+          onClick={() => setProfile({ ...profile, showLastActive: !(profile.showLastActive ?? true) })}
+          className="flex w-full items-center justify-between gap-6 text-left"
+        >
+          <span>
+            <span className="font-display text-2xl font-medium">Show when I was last active</span>
+            <span className="mt-1 block text-sm text-muted">
+              People you are talking to can see how recently you were here. Turn it off and no one can see it, and you
+              won&rsquo;t appear in &ldquo;Online now&rdquo; either.
+            </span>
+          </span>
+          <span
+            className={`flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition ${
+              (profile.showLastActive ?? true) ? "bg-ink" : "bg-line"
+            }`}
+          >
+            <span
+              className={`h-6 w-6 rounded-full transition-transform duration-300 ${
+                (profile.showLastActive ?? true) ? "translate-x-6 bg-gold" : "translate-x-0 bg-white"
               }`}
             />
           </span>

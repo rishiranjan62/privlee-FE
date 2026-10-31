@@ -14,6 +14,9 @@ import SignupPage from "./pages/SignupPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import AdReportPage from "./pages/AdReportPage";
+import PayDonePage from "./pages/PayDonePage";
+import PayPage from "./pages/PayPage";
 import { FaqPage, GuidePage, GuidesIndexPage, PrivacyPage, TermsPage } from "./pages/ContentPages";
 
 // Only the pages a first-time visitor sees are in the first download. Everything behind the sign-in -
@@ -106,6 +109,11 @@ function AppRoutes() {
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* An advertiser's private report: opened with the secret in the link, no sign-in. */}
+          <Route path="/ad-report/:token" element={<AdReportPage />} />
+          {/* The Android app's payment: opened in the phone's browser, no sign-in. */}
+          <Route path="/pay" element={<PayPage />} />
+          <Route path="/pay/done" element={<PayDonePage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/faq" element={<FaqPage />} />

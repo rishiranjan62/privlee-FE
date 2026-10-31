@@ -90,13 +90,17 @@ export interface Profile extends ProfileExtras {
   likedByMe?: boolean | null;
   /** Someone else's private album, if they have one. Null on your own profile. */
   privateAlbum?: PrivateAlbum | null;
+  /** Only on your own profile: whether people you talk to can see when you were last active. */
+  showLastActive?: boolean | null;
+  /** When this person was last active, to the minute. Only for someone you are talking to, and only if they have not hidden it. */
+  lastActiveAt?: string | null;
 }
 
 export type ProfileUpdate = Pick<
   Profile,
   "lookingFor" | "relationshipStatus" | "city" | "discreetMode"
 > &
-  Partial<ProfileExtras> & { bio: string; interestedIn?: Gender[] };
+  Partial<ProfileExtras> & { bio: string; interestedIn?: Gender[]; showLastActive?: boolean };
 
 export interface AuthResponse {
   accessToken: string;
@@ -809,6 +813,14 @@ export interface ServedAd {
   label: string;
   /** Messages list only: the (zero-based) conversation this row goes under. */
   position?: number | null;
+  /** An offer line such as "15% off your first booking", or null. */
+  offerText?: string | null;
+  /** The offer has a code. The code is not in the ad: "Show code" asks for it, and that is counted. */
+  hasCode?: boolean;
+  /** Which creative of the ad this is (A to D); handed back when the page reports the ad seen or closed. */
+  variant?: string;
+  /** One plain sentence on why this ad is shown: who the advertiser chose to reach. */
+  why?: string;
 }
 
 export interface AdCounts {
@@ -816,7 +828,25 @@ export interface AdCounts {
   clicks: number;
 }
 
-export type AdStatus = "RUNNING" | "SCHEDULED" | "PAUSED" | "ENDED" | "LIMIT_REACHED";
+/**
+ * From showing to clicking. {@code measured} is the showings to a screen that reports whether the ad was on screen (older apps do
+ * not), so {@code seen} and {@code hidden} are judged against it, not against {@code delivered}. {@code firstTime} is showings of an
+ * ad the device had not shown in the last week: a rough count of new people reached.
+ */
+export interface AdFunnel {
+  delivered: number;
+  measured: number;
+  seen: number;
+  hidden: number;
+  firstTime: number;
+  clicks: number;
+  /** Times "Show code" was tapped. */
+  reveals: number;
+  /** Sign-ups or bookings the advertiser's server reported back against a click. */
+  conversions: number;
+}
+
+export type AdStatus = "DRAFT" | "REJECTED" | "RUNNING" | "SCHEDULED" | "PAUSED" | "ENDED" | "LIMIT_REACHED";
 
 export interface AdminAd {
   id: string;
@@ -848,7 +878,154 @@ export interface AdminAd {
   web: AdCounts;
   android: AdCounts;
   /** The same totals place by place; empty until the ad has been shown. */
-  byPlacement: { placement: AdPlacement; counts: AdCounts }[];
+  byPlacement: { placement: AdPlacement; counts: AdCounts; funnel: AdFunnel }[];
+  funnel: AdFunnel;
+  funnelWeb: AdFunnel;
+  funnelAndroid: AdFunnel;
+  /** What it is priced at and has earned; null when no price is recorded. */
+  pricing: AdPricing | null;
+  /** Against the number of showings sold; null unless a number was sold and the ad has an end. */
+  pacing: AdPacing | null;
+  /** The advertiser's read-only link; null when there is none. */
+  reportLink: AdReportLink | null;
+  /** The offer as entered (with its code); null when the ad has none. */
+  offer: { text: string; code: string | null } | null;
+  /** Whether clicks carry a token the advertiser can report conversions against, and the secret that proves a report is theirs. */
+  tracking: { enabled: boolean; key: string | null };
+  /** What the advertiser says was redeemed, as entered by an admin. */
+  redeemed: number;
+  category: string;
+  /** DRAFT waits for an admin's approval and is not shown; REJECTED carries the reason in {@code note}. */
+  review: { status: "DRAFT" | "APPROVED" | "REJECTED"; note: string | null; reviewedAt: string | null };
+  /** The days and hours the ad may run (India time), and whether that allows it right now. */
+  schedule: { days: number; from: number | null; to: number | null; onNow: boolean; text: string };
+  /** With several creatives: most traffic goes to the best one once each has had a fair sample. */
+  autoOptimise: boolean;
+  /** The ad's own creative (A) and the others with their counts; empty when the ad has only one. */
+  creatives: AdCreative[];
+  /** Member reports in the last 7 days that nobody has dismissed. */
+  openReports: number;
+}
+
+export interface AdCreative {
+  label: string;
+  title: string;
+  body: string | null;
+  ctaLabel: string;
+  imagePath: string | null;
+  active: boolean;
+  shown: number;
+  seen: number;
+  clicked: number;
+  hidden: number;
+  /** The best click rate, named only once every active creative has had a fair sample. */
+  leading: boolean;
+}
+
+/** A member's report of an ad: the reason, an optional note, where it was seen; never who. */
+export interface AdFlag {
+  id: string;
+  reason: "MISLEADING" | "OFFENSIVE" | "SCAM" | "IRRELEVANT" | "OTHER";
+  note: string | null;
+  platform: "WEB" | "ANDROID";
+  placement: AdPlacement | null;
+  createdAt: string;
+  dismissed: boolean;
+}
+
+/** Who may advertise, how an ad gets approved, when reports pause an ad, and the share of members who see no ads. */
+export interface AdPolicy {
+  requireApproval: boolean;
+  blockedCategories: string[];
+  blockedTerms: string[];
+  reportsToPause: number;
+  holdoutPercent: number;
+}
+
+export interface AdCategoryOption {
+  value: string;
+  label: string;
+}
+
+export interface AdHoldoutGroup {
+  name: string;
+  members: number;
+  avgActiveDays: number;
+  percentMessaged: number;
+  avgMessages: number;
+  percentBought: number;
+}
+
+export interface AdHoldoutReport {
+  running: boolean;
+  percent: number;
+  startedAt: string | null;
+  daysRunning: number;
+  holdout: AdHoldoutGroup | null;
+  shownAds: AdHoldoutGroup | null;
+  enoughMembers: boolean;
+  note: string;
+}
+
+/** One line of "the advertiser says this many codes were used on this day". */
+export interface AdRedemption {
+  id: string;
+  day: string;
+  count: number;
+  note: string | null;
+  createdAt: string;
+}
+
+/** {@code rupees} is the fee (FLAT) or the rate per 1,000 showings (CPM). */
+export interface AdPricing {
+  model: "FLAT" | "CPM";
+  rupees: number;
+  bookedRupees: number;
+  earnedRupees: number;
+  costPerClick: number | null;
+  perThousandShown: number | null;
+}
+
+export type AdPacingState = "NOT_STARTED" | "ON_TRACK" | "BEHIND" | "AHEAD" | "DONE" | "ENDED_SHORT";
+
+export interface AdPacing {
+  state: AdPacingState;
+  /** How many showings should have happened by now if they were spread evenly. */
+  expected: number;
+  ratio: number;
+  deliveredPercent: number;
+}
+
+/** {@code validUntil} is null for an ad with no end date: the link works until it is ended. */
+export interface AdReportLink {
+  token: string;
+  validUntil: string | null;
+  active: boolean;
+}
+
+/** What an advertiser sees through their link. Counts only, and never the price. */
+export interface AdReport {
+  title: string;
+  body: string | null;
+  ctaLabel: string;
+  imagePath: string | null;
+  placements: AdPlacement[];
+  startsAt: string;
+  endsAt: string | null;
+  status: "RUNNING" | "SCHEDULED" | "PAUSED" | "ENDED";
+  validUntil: string | null;
+  generatedAt: string;
+  sold: number | null;
+  offerText: string | null;
+  hasCode: boolean;
+  /** Codes the advertiser reported redeemed, as entered by Privlee. */
+  redeemed: number;
+  tracksConversions: boolean;
+  total: AdFunnel;
+  web: AdFunnel;
+  android: AdFunnel;
+  byPlacement: { placement: AdPlacement; funnel: AdFunnel }[];
+  daily: { day: string; shown: number; seen: number; clicked: number }[];
 }
 
 export interface AdDay {
@@ -868,11 +1045,14 @@ export interface AdsOverview {
     last30Days: AdCounts;
     web30Days: AdCounts;
     android30Days: AdCounts;
+    funnel30Days: AdFunnel;
     daily: AdDay[];
     byPlacement: { placement: AdPlacement; last30Days: AdCounts }[];
   };
   ads: AdminAd[];
   settings: AdSettings;
+  policy: AdPolicy;
+  categories: AdCategoryOption[];
   /** True when the server itself has ads switched off (ADS_ENABLED=false), whatever the settings say. */
   switchedOffOnServer: boolean;
   maxImageKb: number;
@@ -912,6 +1092,20 @@ export interface AdForm {
   impressionCap: string;
   maxPerDay: string;
   minGapHours: string;
+  /** What the ad is sold for: "" (not recorded), "FLAT" (a fee for the run) or "CPM" (a rate per 1,000 showings). */
+  priceModel: "" | "FLAT" | "CPM";
+  priceRupees: string;
+  /** An offer line and the code shown after "Show code". Both empty means no offer. */
+  offerText: string;
+  offerCode: string;
+  /** Clicks carry a token the advertiser can report sign-ups or bookings against. */
+  trackConversions: boolean;
+  category: string;
+  /** Days the ad may run: bit 0 = Monday ... bit 6 = Sunday. 127 = every day. */
+  daysMask: number;
+  /** The hours it may run (India time), 0-23 and 1-24; both empty = all day. */
+  hoursFrom: string;
+  hoursTo: string;
 }
 
 /** A state or city an ad can be aimed at. `state` is the key of the state a city is in. */
