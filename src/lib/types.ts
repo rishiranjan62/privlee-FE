@@ -476,6 +476,21 @@ export interface AdminUserSummary {
   gender: string | null;
   city: string | null;
   deletedAt: string | null;
+  /** When they last used the app; null if they never have (and for people who deleted their account). */
+  lastActiveAt: string | null;
+}
+
+/**
+ * How recently members were last here. Days are whole days in India time (0 = today); the groups do not overlap and, with {@code never},
+ * add up to {@code total}.
+ */
+export interface UserActivity {
+  total: number;
+  today: number;
+  within7: number;
+  within30: number;
+  never: number;
+  groups: { label: string; fromDays: number; toDays: number | null; members: number }[];
 }
 
 export interface UserFacets {
@@ -493,6 +508,11 @@ export interface UserListQuery {
   event?: string;
   from?: string;
   until?: string;
+  /** Whole days since last active (India time, 0 = today). idleMax may be left out for "and longer". */
+  idleMin?: number;
+  idleMax?: number;
+  /** Members who have never been active. */
+  never?: boolean;
 }
 
 export interface AdminUserDetail {

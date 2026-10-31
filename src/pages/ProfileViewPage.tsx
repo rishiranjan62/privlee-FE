@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import PhotoGallery from "../components/PhotoGallery";
@@ -77,6 +77,7 @@ export default function ProfileViewPage() {
   const [note, setNote] = useState("");
   const [messaging, setMessaging] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const noteBox = useRef<HTMLTextAreaElement>(null);
   const [askState, setAskState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [matched, setMatched] = useState(false);
 
@@ -128,13 +129,20 @@ export default function ProfileViewPage() {
     api.getPhotoRequestCost().then(setPhotoCost).catch(() => setPhotoCost(null));
   }, []);
 
+  // Pressing "Message" opens the box to write in: put the cursor in it and bring it into view (it sits above the buttons).
+  useEffect(() => {
+    if (!composing) return;
+    noteBox.current?.focus();
+    noteBox.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [composing]);
+
   async function sendNote() {
     if (!userId || messaging || !note.trim()) return;
     setMessaging(true);
     setMessageError(null);
     try {
       const started = await api.messageMember(userId, note.trim());
-      navigate(`/messages/${started.matchId}`);
+      navigate(`/messages/${started.matchId}`, { state: { focusComposer: true } });
     } catch (err) {
       setMessageError(err instanceof Error ? err.message : "That message didn't send.");
       setMessaging(false);
@@ -335,6 +343,7 @@ export default function ProfileViewPage() {
             </label>
             <textarea
               id="cold-note"
+              ref={noteBox}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               maxLength={2000}
@@ -371,6 +380,7 @@ export default function ProfileViewPage() {
           {profile.matchId ? (
             <Link
               to={`/messages/${profile.matchId}`}
+              state={{ focusComposer: true }}
               className="flex-1 rounded-full bg-ink px-6 py-3.5 text-center font-medium text-canvas shadow-[0_18px_40px_-14px_rgba(29,26,22,0.6)] transition hover:-translate-y-0.5 hover:bg-gold"
             >
               Message
@@ -389,6 +399,7 @@ export default function ProfileViewPage() {
             (profile.conversationId ? (
               <Link
                 to={`/messages/${profile.conversationId}`}
+                state={{ focusComposer: true }}
                 className="rounded-full border border-line bg-white/70 px-7 py-3.5 text-ink backdrop-blur transition hover:border-gold"
               >
                 Open conversation

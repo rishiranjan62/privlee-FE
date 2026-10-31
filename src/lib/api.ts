@@ -34,6 +34,7 @@ import type {
   PaymentOrderPage,
   PaymentsSummary,
   UserFacets,
+  UserActivity,
   UserListQuery,
   EvidenceResponse,
   ModerationActionCode,
@@ -1051,6 +1052,12 @@ export const api = {
   async listUsers(query: UserListQuery): Promise<AdminUserSummary[]> {
     const params = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== ""));
     const { data } = await client.get<AdminUserSummary[]>("/admin/users", { params });
+    return data;
+  },
+
+  /** How many members were last active today, in 7 and 30 days, and how many have been away for how long. */
+  async getUserActivity(): Promise<UserActivity> {
+    const { data } = await client.get<UserActivity>("/admin/users/activity");
     return data;
   },
 

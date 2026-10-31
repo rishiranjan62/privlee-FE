@@ -21,9 +21,11 @@ interface Props {
   /** The message being answered, shown above the box until sent or cancelled. */
   replyingTo?: Message | null;
   onCancelReply?: () => void;
+  /** Puts the cursor in the message box when the conversation opens: someone who pressed "Message" on a profile wants to type. */
+  focusOnOpen?: boolean;
 }
 
-export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo, onCancelReply }: Props) {
+export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo, onCancelReply, focusOnOpen = false }: Props) {
   const [draft, setDraft] = useState("");
   const [tray, setTray] = useState<"none" | "emoji" | "gift">("none");
   const [gifts, setGifts] = useState<GiftOption[]>([]);
@@ -34,6 +36,9 @@ export default function ChatComposer({ matchId, onSend, onSendImage, replyingTo,
   const textCost = pricing.textCost;
   const warning = unmatchedNote(pricing);
   const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (focusOnOpen) inputRef.current?.focus();
+  }, [focusOnOpen, matchId]);
   const pictureInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
   // Shrinking a video takes about as long as the clip, so say how far along it is.

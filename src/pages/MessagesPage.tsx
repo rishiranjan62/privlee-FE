@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { rememberHidden } from "../lib/adMemory";
 import { revealScrollbar } from "../lib/scroll";
@@ -33,6 +33,8 @@ function preview(message: Message | null, mine: boolean): string {
 
 export default function MessagesPage() {
   const { matchId } = useParams<{ matchId: string }>();
+  // Coming from a profile's Message button asks for the cursor to be in the message box; opening a chat from the list does not.
+  const focusComposer = (useLocation().state as { focusComposer?: boolean } | null)?.focusComposer === true;
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const myId = localStorage.getItem("dd_user_id");
@@ -209,7 +211,7 @@ export default function MessagesPage() {
                   </span>
                 </div>
                 <div className="min-h-0 flex-1">
-                  <ChatThread matchId={matchId} onActivity={load} />
+                  <ChatThread matchId={matchId} onActivity={load} focusComposer={focusComposer} />
                 </div>
               </>
             ) : (

@@ -18,9 +18,11 @@ interface Props {
   matchId: string;
   /** Lets the surrounding list refresh its previews and unread counts. */
   onActivity?: () => void;
+  /** Open with the cursor in the message box (the person came from a profile's Message button). */
+  focusComposer?: boolean;
 }
 
-export default function ChatThread({ matchId, onActivity }: Props) {
+export default function ChatThread({ matchId, onActivity, focusComposer = false }: Props) {
   const { userId } = useAuth();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -356,6 +358,7 @@ export default function ChatThread({ matchId, onActivity }: Props) {
         onSendImage={handleSendImage}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
+        focusOnOpen={focusComposer}
       />
     </div>
   );

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { genderLabels } from "../lib/labels";
-import type { AdminUserSummary, UserFacets } from "../lib/types";
+import type { AdminUserSummary, UserActivity, UserFacets } from "../lib/types";
 
 export function StateBadge({ state }: { state: string }) {
   if (state === "ACTIVE") return <span className="text-xs text-muted">Active</span>;
@@ -50,6 +50,115 @@ const statusOptions = [
 
 const field = "rounded border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold";
 
+/** A moment as a calendar day in India time (the admins' day), as whole days since 1970: so two moments on the same day are 0 apart. */
+function indiaDay(date: Date): number {
+  const [y, m, d] = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(date)
+    .split("-")
+    .map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86_400_000);
+}
+
+/**
+ * "Today", "Yesterday", "5 days ago", "3 months ago", or "Never": when someone was last here, in words. Counted in calendar days in India time,
+ * the same way the activity numbers above it are, so a row always agrees with the group it was found in.
+ */
+function lastActive(iso: string | null): string {
+  if (!iso) return "Never";
+  const days = Math.max(0, indiaDay(new Date()) - indiaDay(new Date(iso)));
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 60) return `${days} days ago`;
+  return `${Math.round(days / 30)} months ago`;
+}
+
+/**
+ * How many members were here today, this week and this month, and how many have been away for how long. Each number opens the list of exactly
+ * those members. A day is a day in India time, counted from the day someone was last active, so "7 to 13 days ago" and "last 7 days" never overlap.
+ */
+function ActivityStrip({
+  activity,
+  idleMin,
+  idleMax,
+  never,
+  onPick,
+}: {
+  activity: UserActivity | null;
+  idleMin: number | null;
+  idleMax: number | null;
+  never: boolean;
+  onPick: (min: number | null, max: number | null, never: boolean) => void;
+}) {
+  const [custom, setCustom] = useState("");
+  if (!activity) return <div className="mt-5 h-24 animate-pulse rounded-lg border border-line bg-white/60" aria-hidden />;
+  const share = (n: number) => (activity.total === 0 ? "" : `${Math.round((n * 100) / activity.total)}%`);
+  const on = (min: number | null, max: number | null, nv = false) => nv === never && min === idleMin && max === idleMax;
+  const tile = (selected: boolean) =>
+    `rounded-lg border px-4 py-3 text-left transition ${selected ? "border-gold bg-[#f6efe3]" : "border-line bg-white hover:border-gold"}`;
+
+  const here: [string, number, number, number][] = [
+    ["Active today", activity.today, 0, 0],
+    ["Last 7 days", activity.within7, 0, 6],
+    ["Last 30 days", activity.within30, 0, 29],
+  ];
+  return (
+    <section className="mt-5 rounded-lg border border-line bg-[#faf9f6] p-4" aria-label="Member activity">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+        Activity of {activity.total.toLocaleString()} members <span className="font-normal normal-case">(by the day they were last active, India time)</span>
+      </h2>
+      <div className="mt-3 grid grid-cols-3 gap-3">
+        {here.map(([label, n, min, max]) => (
+          <button key={label} type="button" onClick={() => onPick(min, max, false)} className={tile(on(min, max))}>
+            <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</span>
+            <span className="mt-0.5 block text-2xl font-semibold tabular-nums">{n.toLocaleString()}</span>
+            <span className="block text-xs text-muted">{share(n)} of members</span>
+          </button>
+        ))}
+      </div>
+      <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-muted">Last seen</p>
+      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+        {activity.groups.slice(1).map((g) => (
+          <button key={g.label} type="button" onClick={() => onPick(g.fromDays, g.toDays, false)} className={tile(on(g.fromDays, g.toDays))}>
+            <span className="block text-xs text-muted">{g.label}</span>
+            <span className="block text-lg font-semibold tabular-nums">{g.members.toLocaleString()}</span>
+          </button>
+        ))}
+        <button type="button" onClick={() => onPick(null, null, true)} className={tile(on(null, null, true))}>
+          <span className="block text-xs text-muted">Never been active</span>
+          <span className="block text-lg font-semibold tabular-nums">{activity.never.toLocaleString()}</span>
+        </button>
+      </div>
+      <form
+        className="mt-4 flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const days = Number(custom);
+          if (Number.isInteger(days) && days >= 1 && days <= 3650) onPick(days, null, false);
+        }}
+      >
+        <label className="text-xs font-medium uppercase tracking-wider text-muted">
+          Not active for at least
+          <span className="mt-1 flex items-center gap-2 normal-case">
+            <input
+              type="number"
+              min={1}
+              max={3650}
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              placeholder="e.g. 21"
+              className="w-24 rounded border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
+            />
+            <span className="text-sm text-muted">days</span>
+          </span>
+        </label>
+        <button className="rounded border border-line bg-white px-4 py-2 text-sm transition hover:border-gold" disabled={!custom}>
+          Show them
+        </button>
+      </form>
+    </section>
+  );
+}
+
 /** Mirrors the server: what the list shows when nobody picked a status. */
 function defaultStatus(filter: string | null, term: string | null, event: string | null): string {
   if (term || event) return "any";
@@ -71,15 +180,22 @@ export default function UsersPage() {
   const gender = params.get("gender") ?? "";
   const city = params.get("city") ?? "";
   const status = params.get("status") ?? defaultStatus(filter, term, event);
+  // By how long ago they were last active (see ActivityStrip). All three live in the URL like every other filter.
+  const idleMin = params.get("idleMin") === null ? null : Number(params.get("idleMin"));
+  const idleMax = params.get("idleMax") === null ? null : Number(params.get("idleMax"));
+  const never = params.get("never") === "1";
+  const byActivity = idleMin !== null || idleMax !== null || never;
   const [q, setQ] = useState(term ?? "");
   const location = useLocation();
   const returnTo = location.pathname + location.search;
   const [rows, setRows] = useState<AdminUserSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [facets, setFacets] = useState<UserFacets | null>(null);
+  const [activity, setActivity] = useState<UserActivity | null>(null);
 
   useEffect(() => {
     api.getUserFacets().then(setFacets).catch(() => setFacets({ cities: [] }));
+    api.getUserActivity().then(setActivity).catch(() => setActivity(null));
   }, []);
 
   useEffect(() => {
@@ -96,6 +212,9 @@ export default function UsersPage() {
         event: event ?? undefined,
         from: from ?? undefined,
         until: until ?? undefined,
+        idleMin: idleMin ?? undefined,
+        idleMax: idleMax ?? undefined,
+        never: never || undefined,
       })
       .then((r) => current && setRows(r))
       .catch(() => {
@@ -106,13 +225,29 @@ export default function UsersPage() {
     return () => {
       current = false;
     };
-  }, [filter, term, status, gender, city, event, from, until]);
+  }, [filter, term, status, gender, city, event, from, until, idleMin, idleMax, never]);
 
   /** Changes one URL parameter and keeps the rest. */
   function set(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
+    setParams(next);
+  }
+
+  /** Narrows the list to members last active in a range of days (or never), keeping the other filters. Picking the same one again clears it. */
+  function pickActivity(min: number | null, max: number | null, nv: boolean) {
+    const next = new URLSearchParams(params);
+    const same = nv === never && min === idleMin && max === idleMax;
+    next.delete("idleMin");
+    next.delete("idleMax");
+    next.delete("never");
+    next.delete("filter");
+    if (!same) {
+      if (min !== null) next.set("idleMin", String(min));
+      if (max !== null) next.set("idleMax", String(max));
+      if (nv) next.set("never", "1");
+    }
     setParams(next);
   }
 
@@ -126,9 +261,26 @@ export default function UsersPage() {
     setParams({});
   }
 
-  const title = event ? (eventTitles[event] ?? "Users") : term ? "Users" : (filterTitles[filter ?? "all"] ?? "Users");
+  const activityTitle = never
+    ? "Members who have never been active"
+    : idleMin === 0 && idleMax === 0
+      ? "Active today"
+      : idleMin === 0 && idleMax !== null
+        ? `Active in the last ${idleMax + 1} days`
+        : idleMin !== null && idleMax === null
+          ? `Not active for ${idleMin}+ days`
+          : idleMin !== null && idleMax !== null
+            ? `Last active ${idleMin} to ${idleMax} days ago`
+            : "Users";
+  const title = byActivity
+    ? activityTitle
+    : event
+      ? (eventTitles[event] ?? "Users")
+      : term
+        ? "Users"
+        : (filterTitles[filter ?? "all"] ?? "Users");
   const searched = term ?? "";
-  const narrowed = Boolean(term || event || gender || city || (filter && filter !== "all") || params.get("status"));
+  const narrowed = Boolean(term || event || gender || city || byActivity || (filter && filter !== "all") || params.get("status"));
   // A deleted account has no profile left, so a gender or city can only ever match people who are still here.
   const profileFilter = Boolean(gender || city);
 
@@ -148,6 +300,10 @@ export default function UsersPage() {
           </>
         )}
       </p>
+
+      {!event && (
+        <ActivityStrip activity={activity} idleMin={idleMin} idleMax={idleMax} never={never} onPick={pickActivity} />
+      )}
 
       <form onSubmit={search} className="mt-5 flex gap-2">
         <input
@@ -221,6 +377,7 @@ export default function UsersPage() {
                 <th className="px-4 py-2.5 font-medium">City</th>
                 <th className="px-4 py-2.5 font-medium">Status</th>
                 <th className="px-4 py-2.5 font-medium">Joined</th>
+                <th className="px-4 py-2.5 font-medium">Last active</th>
                 <th className="px-4 py-2.5 font-medium">Open reports</th>
                 <th />
               </tr>
@@ -244,6 +401,9 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td className="px-4 py-2.5 text-muted">{new Date(u.joinedAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-2.5 text-muted" title={u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : undefined}>
+                    {u.deletedAt ? "—" : lastActive(u.lastActiveAt)}
+                  </td>
                   <td className="px-4 py-2.5">{u.openReports > 0 ? <span className="text-danger">{u.openReports}</span> : "—"}</td>
                   <td className="px-4 py-2.5 text-right">
                     <Link to={`/admin/users/${u.userId}`} state={{ from: returnTo }} className="font-medium text-gold hover:underline">Open</Link>
