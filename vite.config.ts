@@ -23,6 +23,10 @@ const PUBLIC_PATHS = [
  */
 const PRIVATE_PREFIXES = [
   '/admin',
+  // An advertiser's private report link: its address carries a secret.
+  '/ad-report',
+  // The Android app's payment pages: a payment session in the address, and nothing to index.
+  '/pay',
   '/verify-email',
   '/forgot-password',
   '/reset-password',

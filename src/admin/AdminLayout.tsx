@@ -9,16 +9,23 @@ import { useStreamEvent } from "../context/StreamContext";
 import { NavLink } from "react-router-dom";
 import type { AdminMe } from "../lib/types";
 
-const links = [
-  { to: "/admin", label: "Overview", end: true },
-  { to: "/admin/reports", label: "Reports", end: false },
-  { to: "/admin/users", label: "Users", end: false },
-  { to: "/admin/photos", label: "Recent photos", end: false },
-  { to: "/admin/analytics", label: "Analytics", end: false },
-  { to: "/admin/payments", label: "Payments", end: false },
-  { to: "/admin/ads", label: "Ads", end: false },
-  { to: "/admin/app", label: "App", end: false },
-  { to: "/admin/audit", label: "Audit log", end: false },
+/** Three groups, in the order an admin works: look after people, then the business, then the app itself. */
+const groups = [
+  [
+    { to: "/admin", label: "Overview", end: true },
+    { to: "/admin/reports", label: "Reports", end: false },
+    { to: "/admin/users", label: "Users", end: false },
+    { to: "/admin/photos", label: "Photos", end: false },
+  ],
+  [
+    { to: "/admin/analytics", label: "Analytics", end: false },
+    { to: "/admin/payments", label: "Payments", end: false },
+    { to: "/admin/ads", label: "Ads", end: false },
+  ],
+  [
+    { to: "/admin/app", label: "App", end: false },
+    { to: "/admin/audit", label: "Audit log", end: false },
+  ],
 ];
 
 /**
@@ -58,13 +65,15 @@ export default function AdminLayout({ me, children }: { me: AdminMe; children: R
               <Logo variant="dark" className="h-9" /> <span className="ml-1 rounded bg-gold px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-widest text-white">Admin</span>
             </span>
             <nav className="order-last flex w-full gap-1 overflow-x-auto pb-1 lg:order-none lg:w-auto lg:overflow-visible lg:pb-0">
-              {links.map((l) => (
+              {groups.map((group, g) => (
+                <div key={g} className="flex shrink-0 items-center gap-0.5 border-l border-white/15 pl-1.5 first:border-l-0 first:pl-0 [&:not(:first-child)]:ml-1.5">
+                {group.map((l) => (
                 <NavLink
                   key={l.to}
                   to={l.to}
                   end={l.end}
                   className={({ isActive }) =>
-                    `shrink-0 whitespace-nowrap rounded px-3 py-1.5 text-sm transition ${
+                    `shrink-0 whitespace-nowrap rounded px-2.5 py-1.5 text-sm transition ${
                       isActive ? "bg-white/15 text-white" : "text-white/60 hover:text-white"
                     }`
                   }
@@ -76,6 +85,8 @@ export default function AdminLayout({ me, children }: { me: AdminMe; children: R
                     </span>
                   )}
                 </NavLink>
+                ))}
+                </div>
               ))}
             </nav>
           </div>
