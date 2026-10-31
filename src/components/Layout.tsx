@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Navigate, NavLink, useLocation } from "react-router-dom";
 import { isAdminAccount } from "../lib/adminStatus";
-import { api, UNREAD_CHANGED } from "../lib/api";
+import { api, tokenStore, UNREAD_CHANGED } from "../lib/api";
 import { useStreamEvent } from "../context/StreamContext";
 import { usePageMeta } from "../lib/seo";
 import Logo from "./Logo";
@@ -36,6 +36,16 @@ export default function Layout({ children, fill = false }: { children: ReactNode
   return <MemberShell fill={fill}>{children}</MemberShell>;
 }
 
+const BADGE_FRESH_MS = 15_000;
+const lastBadges = { likes: 0, unread: 0, at: 0, token: "" };
+
+/** The remembered counts belong to one sign-in; another account on the same tab starts clean. */
+function badgesForThisSignIn() {
+  const token = tokenStore.get() ?? "";
+  if (lastBadges.token !== token) Object.assign(lastBadges, { likes: 0, unread: 0, at: 0, token });
+  return lastBadges;
+}
+
 function MemberShell({ children, fill }: { children: ReactNode; fill: boolean }) {
   // Everything behind the sign-in is private: keep it out of search results.
   usePageMeta({ title: "Privlee", index: false });
@@ -57,17 +67,26 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
     };
   }, []);
 
-  const [pendingLikes, setPendingLikes] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  // Every page mounts its own shell, so the counts are kept here, between pages: a new page starts from the last
+  // numbers instead of zero, and moving around does not ask the server again within a few seconds.
+  const [pendingLikes, setPendingLikes] = useState(() => badgesForThisSignIn().likes);
+  const [unreadMessages, setUnreadMessages] = useState(() => badgesForThisSignIn().unread);
 
   const refreshBadges = useCallback(() => {
+    lastBadges.at = Date.now();
     api
       .getLikeSummary()
-      .then((s) => setPendingLikes(s.received))
+      .then((s) => {
+        lastBadges.likes = s.received;
+        setPendingLikes(s.received);
+      })
       .catch(() => setPendingLikes(0));
     api
       .getUnreadCount()
-      .then(setUnreadMessages)
+      .then((n) => {
+        lastBadges.unread = n;
+        setUnreadMessages(n);
+      })
       .catch(() => setUnreadMessages(0));
   }, []);
 
@@ -75,7 +94,8 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
   // so the badge cannot be refreshed by one component while another is still clearing it.
   useEffect(() => {
     if (!location.pathname.startsWith("/likes")) {
-      refreshBadges();
+      // Server pushes and unread changes (below) refresh at once; this only covers arriving on a page.
+      if (Date.now() - badgesForThisSignIn().at > BADGE_FRESH_MS) refreshBadges();
       return;
     }
     api
@@ -100,10 +120,9 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
       }`}
     >
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-        <div className="drift absolute -left-40 -top-48 h-[32rem] w-[32rem] rounded-full bg-[#f1cfa0]/45 blur-3xl" />
+        <div className="absolute -left-40 -top-48 h-[32rem] w-[32rem] rounded-full bg-[#f1cfa0]/45 blur-3xl" />
         <div
-          className="drift absolute -right-40 top-1/3 h-[28rem] w-[28rem] rounded-full bg-[#f2c4b3]/35 blur-3xl"
-          style={{ animationDelay: "-8s" }}
+          className="absolute -right-40 top-1/3 h-[28rem] w-[28rem] rounded-full bg-[#f2c4b3]/35 blur-3xl"
         />
         <div className="grain absolute inset-0" />
       </div>

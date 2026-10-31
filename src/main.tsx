@@ -19,6 +19,22 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 
+// After a new release the page a visitor already has open still names the old, now-deleted chunk files. Reload once to pick
+// up the current build instead of leaving a blank screen; the flag stops a loop if the file is really missing.
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    if (sessionStorage.getItem('dd_chunk_reload')) return
+    sessionStorage.setItem('dd_chunk_reload', '1')
+  } catch {
+    return
+  }
+  event.preventDefault()
+  window.location.reload()
+})
+window.addEventListener('load', () => {
+  try { sessionStorage.removeItem('dd_chunk_reload') } catch { /* private mode */ }
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
