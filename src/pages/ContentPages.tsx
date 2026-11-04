@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { privacy, terms } from "../lib/legal";
+import { childSafety, deleteAccount, privacy, terms } from "../lib/legal";
 import { faq, findGuide, guideJsonLd, guides } from "../lib/siteContent";
 import { usePageMeta } from "../lib/seo";
 import Logo from "../components/Logo";
@@ -24,6 +24,30 @@ export function PrivacyPage() {
       path="/privacy"
       description="How Privlee collects, uses and protects your information."
       related={[{ to: "/terms", label: "Terms of Service" }, { to: "/faq", label: "Frequently asked questions" }]}
+    />
+  );
+}
+
+export function ChildSafetyPage() {
+  return (
+    <DocumentPage
+      doc={childSafety}
+      path="/child-safety"
+      description="How Privlee keeps minors out and what it does about child sexual abuse and exploitation."
+      contents={false}
+      related={[{ to: "/terms", label: "Terms of Service" }, { to: "/privacy", label: "Privacy Policy" }]}
+    />
+  );
+}
+
+export function DeleteAccountPage() {
+  return (
+    <DocumentPage
+      doc={deleteAccount}
+      path="/delete-account"
+      description="How to delete your Privlee account, and what is erased or kept."
+      contents={false}
+      related={[{ to: "/privacy", label: "Privacy Policy" }, { to: "/faq", label: "Frequently asked questions" }]}
     />
   );
 }

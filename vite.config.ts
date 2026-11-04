@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
   '/signup',
   '/terms',
   '/privacy',
+  '/delete-account',
+  '/child-safety',
   '/faq',
   '/guides',
   ...guides.map((g: { slug: string }) => `/guides/${g.slug}`),
@@ -113,6 +115,8 @@ function seoOutput(env: Record<string, string>): Plugin {
             '## Policies',
             link('Terms of Service', '/terms', 'the rules for using Privlee'),
             link('Privacy Policy', '/privacy', 'what is collected, how it is used and protected'),
+            link('Child safety standards', '/child-safety', 'how minors are kept out and how reports of child abuse are handled'),
+            link('Delete your account', '/delete-account', 'how to delete an account and what is erased or kept'),
             '',
           ].join('\n')
           this.emitFile({ type: 'asset', fileName: 'llms.txt', source: llms })

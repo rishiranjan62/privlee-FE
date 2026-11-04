@@ -17,7 +17,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AdReportPage from "./pages/AdReportPage";
 import PayDonePage from "./pages/PayDonePage";
 import PayPage from "./pages/PayPage";
-import { FaqPage, GuidePage, GuidesIndexPage, PrivacyPage, TermsPage } from "./pages/ContentPages";
+import { ChildSafetyPage, DeleteAccountPage, FaqPage, GuidePage, GuidesIndexPage, PrivacyPage, TermsPage } from "./pages/ContentPages";
 
 // Only the pages a first-time visitor sees are in the first download. Everything behind the sign-in -
 // the member app and the admin console - loads when it is first needed, which keeps the landing
@@ -116,6 +116,8 @@ function AppRoutes() {
           <Route path="/pay/done" element={<PayDonePage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/delete-account" element={<DeleteAccountPage />} />
+          <Route path="/child-safety" element={<ChildSafetyPage />} />
           <Route path="/faq" element={<FaqPage />} />
           <Route path="/guides" element={<GuidesIndexPage />} />
           <Route path="/guides/:slug" element={<GuidePage />} />

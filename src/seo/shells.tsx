@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
-import { privacy, terms, type LegalDocument } from "../lib/legal";
+import { childSafety, deleteAccount, privacy, terms, type LegalDocument } from "../lib/legal";
 import { pageMeta } from "../lib/pageMeta";
 import { faq, guideJsonLd, guides } from "../lib/siteContent";
 
@@ -168,6 +168,10 @@ export function renderShell(path: string): Shell | null {
       return documentShell(terms, "The terms of using Privlee.");
     case "/privacy":
       return documentShell(privacy, "How Privlee collects, uses and protects your information.");
+    case "/child-safety":
+      return documentShell(childSafety, "How Privlee keeps minors out and what it does about child sexual abuse and exploitation.");
+    case "/delete-account":
+      return documentShell(deleteAccount, "How to delete your Privlee account, and what is erased or kept.");
     case "/faq":
       return documentShell(faq, faq.description, {
         "@context": "https://schema.org",

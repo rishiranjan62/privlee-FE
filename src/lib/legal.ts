@@ -222,3 +222,119 @@ export const privacy: LegalDocument = {
     },
   ],
 };
+
+/**
+ * Public page that explains how to delete a Privlee account and what happens to the data. Google Play asks for a web
+ * address like this for the Data safety form. Keep it matching "When you delete your account" in the Privacy Policy.
+ */
+export const deleteAccount: LegalDocument = {
+  title: "Delete your Privlee account",
+  updated: "4 November 2026",
+  intro:
+    "You can delete your Privlee account yourself, at any time, in the app or on the website. This page explains the steps and what is erased or kept.",
+  sections: [
+    {
+      heading: "How to delete your account",
+      body: [
+        "In the Privlee app (Android):",
+        [
+          "Tap your initial at the top right, then choose Account and password.",
+          "Scroll to Delete your account and tap Delete my account.",
+          "Enter your password (if your account has one) and type the confirmation word, then confirm.",
+        ],
+        "On the website, privlee.com:",
+        [
+          "Sign in, open the profile menu at the top right and choose Delete account.",
+          "Enter your password (if your account has one) and confirm.",
+        ],
+        "If you cannot remember your password, use Forgot password on the sign-in page to set a new one, then follow the steps above. If you signed up with Google, you do not need a password: just confirm.",
+      ],
+    },
+    {
+      heading: "What is deleted straight away",
+      body: [
+        "Deleting is immediate and cannot be undone. We erase:",
+        [
+          "Your profile and the answers you gave.",
+          "Your photos, including the blurred copies.",
+          "Your matches, conversations, likes and gifts.",
+          "Your notifications and the people you blocked.",
+          "Your usage history and sign-in sessions on every device.",
+        ],
+      ],
+    },
+    {
+      heading: "What we keep, and for how long",
+      body: [
+        "We keep only a small amount, and only for these reasons:",
+        [
+          "Your email address and the date you first joined, so that someone removed for breaking the rules cannot simply start again, and so we can welcome you back if you return. Kept until you ask us to erase it as well.",
+          "Safety reports that involve you, and the saved snapshot of a reported conversation until 90 days after the report is resolved.",
+          "A record that the account was deleted, in the log of our team's actions.",
+          "Records of payments, where the law requires us to keep them.",
+        ],
+        "If you return with the same email you set up a fresh profile. Nothing from your earlier profile, photos or conversations comes back.",
+      ],
+    },
+    {
+      heading: "More about your data",
+      body: ["The Privacy Policy explains what Privlee collects and why, and how long each kind of information is kept."],
+    },
+  ],
+};
+
+/**
+ * Public page of Privlee's standards against child sexual abuse and exploitation (CSAE). Google Play asks for a web address
+ * like this for dating and social apps. Every sentence must describe something the product really does.
+ */
+export const childSafety: LegalDocument = {
+  title: "Child safety standards",
+  updated: "4 November 2026",
+  intro:
+    "Privlee is for adults only. We have zero tolerance for child sexual abuse and exploitation (CSAE), including child sexual abuse material (CSAM). This page explains how we keep minors out and what we do when something is reported.",
+  sections: [
+    {
+      heading: "Adults only",
+      body: [
+        [
+          "Everyone must be 18 or older. We ask for a date of birth, and nobody under 18 can create an account.",
+          "A person turned away for being under 18 is remembered on that device, so they cannot simply try again with another date.",
+          "The sign-up terms confirm that the person is 18 or over.",
+        ],
+        "If we learn that someone under 18 has an account, we erase their profile, photos, matches and messages straight away and close the account.",
+      ],
+    },
+    {
+      heading: "What is not allowed",
+      body: [
+        "Any sexual content involving a child, any attempt to contact, groom or exploit a child, and any attempt to share, request or promote CSAM. Accounts that do this are removed permanently and cannot return.",
+      ],
+    },
+    {
+      heading: "How people can report",
+      body: [
+        [
+          "Every profile and conversation has a Report option, in the app and on the website. One of the reasons is a suspicion that the person is under 18.",
+          "Members can also block anyone, at any time, and the person is never told.",
+          "Sponsored ads can be reported from their own menu.",
+        ],
+      ],
+    },
+    {
+      heading: "What we do with a report",
+      body: [
+        [
+          "Our moderation team reviews reports, including a saved snapshot of the reported conversation when the report is about one.",
+          "New photos are checked by a moderator and start blurred, so they are not shown clearly to others straight away.",
+          "We remove content and close accounts that break these standards, and keep the safety record so the same person cannot start again.",
+          "Where the law requires, we report CSAM and child exploitation to the relevant authorities and cooperate with their investigations.",
+          "Looking at a member's photos or a reported conversation is recorded in a log that our team cannot edit.",
+        ],
+      ],
+    },
+    {
+      heading: "More",
+      body: ["The Terms of Service and Privacy Policy explain the rules for members and how information is kept."],
+    },
+  ],
+};
