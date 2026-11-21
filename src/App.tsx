@@ -36,6 +36,10 @@ const AdminLayout = lazy(() => import("./admin/AdminLayout"));
 const AdminHome = lazy(() => import("./admin/AdminHome"));
 const AuditLogPage = lazy(() => import("./admin/AuditLogPage"));
 const AnalyticsPage = lazy(() => import("./admin/AnalyticsPage"));
+const EngagementPage = lazy(() => import("./admin/EngagementPage"));
+const ThoughtsAdminPage = lazy(() => import("./admin/ThoughtsAdminPage"));
+const ThoughtsPage = lazy(() => import("./pages/ThoughtsPage"));
+const ThoughtPage = lazy(() => import("./pages/ThoughtPage"));
 const PaymentsPage = lazy(() => import("./admin/PaymentsPage"));
 const AppReleasesPage = lazy(() => import("./admin/AppReleasesPage"));
 const AdsPage = lazy(() => import("./admin/AdsPage"));
@@ -131,6 +135,26 @@ function AppRoutes() {
               <ProtectedRoute>
                 <Layout>
                   <DiscoverPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/thoughts"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ThoughtsPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/thoughts/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ThoughtPage />
                 </Layout>
               </ProtectedRoute>
             }
@@ -265,6 +289,34 @@ function AppRoutes() {
                   {(me) => (
                     <AdminLayout me={me}>
                       <AnalyticsPage />
+                    </AdminLayout>
+                  )}
+                </AdminGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/engagement"
+            element={
+              <ProtectedRoute>
+                <AdminGuard>
+                  {(me) => (
+                    <AdminLayout me={me}>
+                      <EngagementPage />
+                    </AdminLayout>
+                  )}
+                </AdminGuard>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/thoughts"
+            element={
+              <ProtectedRoute>
+                <AdminGuard>
+                  {(me) => (
+                    <AdminLayout me={me}>
+                      <ThoughtsAdminPage />
                     </AdminLayout>
                   )}
                 </AdminGuard>

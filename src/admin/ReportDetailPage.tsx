@@ -124,6 +124,35 @@ export default function ReportDetailPage() {
         <Facts title="Reporter" p={report.reporter} />
       </div>
 
+      {report.content && (
+        <section className="mt-5 rounded-lg border border-line bg-white p-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
+              Reported {report.content.kind === "COMMENT" ? "comment" : "thought"}
+            </h2>
+            {report.content.removed ? (
+              <span className="text-xs text-muted">Deleted by its author</span>
+            ) : report.content.hidden ? (
+              <span className="text-xs text-muted">Hidden from members</span>
+            ) : (
+              <button
+                onClick={async () => {
+                  const c = report.content!;
+                  if (c.kind === "COMMENT" && c.commentId) await api.hideThoughtComment(c.commentId, "Report " + report.id);
+                  else if (c.thoughtId) await api.hideThought(c.thoughtId, "Report " + report.id);
+                  setReport(await api.getReport(report.id));
+                }}
+                className="rounded border border-line px-3 py-1 text-sm transition hover:border-danger hover:text-danger"
+              >
+                Hide from members
+              </button>
+            )}
+          </div>
+          <p className="mt-3 whitespace-pre-wrap break-words rounded bg-[#f4f2ee] px-3 py-2 text-sm">{report.content.text ?? "(text not kept)"}</p>
+          <p className="mt-2 text-xs text-muted">The words as they were when the report was sent. Hiding does not decide the report: choose a decision below as well.</p>
+        </section>
+      )}
+
       <section className="mt-5 rounded-lg border border-line bg-white p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">Conversation</h2>

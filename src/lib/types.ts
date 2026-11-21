@@ -439,6 +439,8 @@ export interface ReportDetail {
   createdAt: string;
   reporter: ReportPerson;
   reported: ReportPerson;
+  /** Set when the report is about a thought or a comment: the words as reported. */
+  content: { kind: "THOUGHT" | "COMMENT"; text: string | null; thoughtId: string | null; commentId: string | null; hidden: boolean; removed: boolean } | null;
   resolution: {
     actionTaken: string;
     note: string;
@@ -1141,4 +1143,90 @@ export interface AdLocationOption {
 export interface AdReach {
   members: number;
   total: number;
+}
+
+/** Where new members drop off and how far conversations get. Counts only; the server never sends names or message text. */
+export interface EngagementStep {
+  key: string;
+  label: string;
+  members: number;
+  percentOfJoined: number;
+}
+
+export interface Engagement {
+  days: number;
+  funnel: EngagementStep[];
+  conversations: { matches: number; noMessage: number; oneSided: number; twoSided: number };
+  lastActive: { key: string; label: string; members: number }[];
+  insights: {
+    openers: EngagementOpener[];
+    openerLengths: EngagementOpener[];
+    /** Hours between a first message and the other person's first reply; null until someone has replied. */
+    medianHoursToReply: number | null;
+    depth: { key: string; label: string; members: number }[];
+  };
+}
+
+export interface EngagementOpener {
+  key: string;
+  label: string;
+  started: number;
+  replied: number;
+  repliedWithinDay: number;
+}
+
+// ---- thoughts: short posts shared with matches or with everyone
+
+export interface ThoughtAuthor {
+  userId: string;
+  pseudonym: string;
+  /** Their main photo, served blurred or clear by the same rules as everywhere else. */
+  photo: Photo | null;
+  you: boolean;
+  /** How you stand with them: SELF, MATCHED (a conversation exists), LIKED (you liked them) or NONE. Never says whether they liked you. */
+  relation: "SELF" | "MATCHED" | "LIKED" | "NONE";
+  matchId: string | null;
+}
+
+export type ThoughtVisibility = "MATCHES" | "PUBLIC";
+
+export interface Thought {
+  id: string;
+  author: ThoughtAuthor;
+  body: string;
+  visibility: ThoughtVisibility;
+  createdAt: string;
+  expiresAt: string;
+  hearts: number;
+  hearted: boolean;
+  comments: number;
+  mine: boolean;
+}
+
+export interface ThoughtComment {
+  id: string;
+  parentId: string | null;
+  author: ThoughtAuthor;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+  hearts: number;
+  hearted: boolean;
+}
+
+export interface ThoughtsConfig {
+  enabled: boolean;
+  canPost: boolean;
+  cannotPostReason: string | null;
+  expireDays: number;
+  maxChars: number;
+}
+
+export type ThoughtTab = "PUBLIC" | "MATCHES" | "MINE";
+
+/** The admin switches for thoughts. There are deliberately no daily limits. */
+export interface ThoughtSettings {
+  enabled: boolean;
+  expireDays: number;
+  requirePhoto: boolean;
 }

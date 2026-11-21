@@ -19,6 +19,8 @@ const groups = [
   ],
   [
     { to: "/admin/analytics", label: "Analytics", end: false },
+    { to: "/admin/engagement", label: "Engagement", end: false },
+    { to: "/admin/thoughts", label: "Thoughts", end: false },
     { to: "/admin/payments", label: "Payments", end: false },
     { to: "/admin/ads", label: "Ads", end: false },
   ],

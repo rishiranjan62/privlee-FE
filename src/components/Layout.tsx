@@ -36,6 +36,9 @@ export default function Layout({ children, fill = false }: { children: ReactNode
   return <MemberShell fill={fill}>{children}</MemberShell>;
 }
 
+/** Whether Thoughts is switched on. Asked once per tab; the tab only appears when the server says so. */
+const thoughtsFlag = { known: false, on: false, token: "" };
+
 const BADGE_FRESH_MS = 15_000;
 const lastBadges = { likes: 0, unread: 0, at: 0, token: "" };
 
@@ -69,6 +72,18 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
 
   // Every page mounts its own shell, so the counts are kept here, between pages: a new page starts from the last
   // numbers instead of zero, and moving around does not ask the server again within a few seconds.
+  const [thoughtsOn, setThoughtsOn] = useState(() => thoughtsFlag.on && thoughtsFlag.token === (tokenStore.get() ?? ""));
+  useEffect(() => {
+    const token = tokenStore.get() ?? "";
+    if (thoughtsFlag.known && thoughtsFlag.token === token) return;
+    api
+      .getThoughtsConfig()
+      .then((c) => {
+        Object.assign(thoughtsFlag, { known: true, on: c.enabled, token });
+        setThoughtsOn(c.enabled);
+      })
+      .catch(() => {});
+  }, []);
   const [pendingLikes, setPendingLikes] = useState(() => badgesForThisSignIn().likes);
   const [unreadMessages, setUnreadMessages] = useState(() => badgesForThisSignIn().unread);
 
@@ -137,7 +152,7 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
 
             {/* On a wide screen the sections sit between the logo and the controls. */}
             <nav className="hidden items-center gap-1 md:flex" aria-label="Sections">
-              <SectionLinks pendingLikes={pendingLikes} unreadMessages={unreadMessages} />
+              <SectionLinks pendingLikes={pendingLikes} unreadMessages={unreadMessages} thoughtsOn={thoughtsOn} />
             </nav>
 
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
@@ -148,8 +163,8 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
           </div>
 
           {/* On a phone they get a row of their own - four equal tabs - so none of them can be clipped. */}
-          <nav className="mt-3 grid grid-cols-4 gap-1 md:hidden" aria-label="Sections">
-            <SectionLinks pendingLikes={pendingLikes} unreadMessages={unreadMessages} compact />
+          <nav className={`mt-3 grid gap-1 md:hidden ${thoughtsOn ? "grid-cols-5" : "grid-cols-4"}`} aria-label="Sections">
+            <SectionLinks pendingLikes={pendingLikes} unreadMessages={unreadMessages} thoughtsOn={thoughtsOn} compact />
           </nav>
         </div>
       </header>
@@ -168,15 +183,18 @@ function MemberShell({ children, fill }: { children: ReactNode; fill: boolean })
 function SectionLinks({
   pendingLikes,
   unreadMessages,
+  thoughtsOn,
   compact = false,
 }: {
   pendingLikes: number;
   unreadMessages: number;
+  thoughtsOn: boolean;
   compact?: boolean;
 }) {
+  const items = thoughtsOn ? [...navItems.slice(0, 3), { to: "/thoughts", label: "Thoughts" }, navItems[3]] : navItems;
   return (
     <>
-      {navItems.map((item) => (
+      {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}

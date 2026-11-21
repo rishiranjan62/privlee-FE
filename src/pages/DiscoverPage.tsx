@@ -30,8 +30,7 @@ export default function DiscoverPage() {
   const [error, setError] = useState<string | null>(null);
   const [likeError, setLikeError] = useState<string | null>(null);
   const allowance = useLikeAllowance();
-  const [genderFilter, setGenderFilter] = useState<Gender | "ALL">("ALL");
-  // Only someone who asked to see more than one gender needs them told apart; with one chosen there is nothing to sort.
+  // Someone who asked to see more than one gender gets each person's gender on their card; there is no filter to sort by.
   const [wantsSeveral, setWantsSeveral] = useState(false);
   useEffect(() => {
     api
@@ -40,7 +39,7 @@ export default function DiscoverPage() {
       .catch(() => {});
   }, []);
 
-  // When what you are shown mixes genders (you asked for men and women, say), say so and let it be sorted.
+  // When what you are shown mixes genders (you asked for men and women, say), each card says which.
   const groups = useMemo(() => {
     if (!sections || !wantsSeveral) return [];
     const everyone = new Map<string, Profile>();
@@ -52,12 +51,7 @@ export default function DiscoverPage() {
     return counts.length > 1 ? counts : [];
   }, [sections, wantsSeveral]);
   const mixed = groups.length > 1;
-  const active = mixed ? genderFilter : "ALL";
-  const shown = useMemo(() => {
-    if (!sections || active === "ALL") return sections;
-    const keep = (list: Profile[]) => list.filter((p) => p.gender === active);
-    return { online: keep(sections.online), nearby: keep(sections.nearby), fresh: keep(sections.fresh) };
-  }, [sections, active]);
+  const shown = sections;
 
   const load = useCallback(() => {
     Promise.all([api.getOnline(), api.getNearby(), api.getNewMembers()])
@@ -159,26 +153,6 @@ export default function DiscoverPage() {
             <span className="relative h-2.5 w-2.5 rounded-full bg-gold" />
           </span>
           {matchToast}
-        </div>
-      )}
-
-      {mixed && (
-        <div role="group" aria-label="Show" className="mb-10 flex flex-wrap gap-2">
-          {[{ value: "ALL" as const, label: "Everyone", count: null }, ...groups].map((g) => (
-            <button
-              key={g.value}
-              onClick={() => setGenderFilter(g.value)}
-              aria-pressed={active === g.value}
-              className={`rounded-full border px-4 py-1.5 text-sm transition ${
-                active === g.value
-                  ? "border-ink bg-ink text-canvas"
-                  : "border-line bg-white/60 text-muted hover:text-ink"
-              }`}
-            >
-              {g.label}
-              {g.count !== null && <span className="ml-1.5 opacity-70">{g.count}</span>}
-            </button>
-          ))}
         </div>
       )}
 
