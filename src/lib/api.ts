@@ -43,6 +43,13 @@ import type {
   Admirer,
   AuditEntry,
   Analytics,
+  Engagement,
+  Thought,
+  ThoughtComment,
+  ThoughtSettings,
+  ThoughtTab,
+  ThoughtVisibility,
+  ThoughtsConfig,
   AuditFacets,
   Gender,
   Traffic,
@@ -920,6 +927,103 @@ export const api = {
       params: { granularity, ...(from ? { from } : {}), ...(to ? { to } : {}), ...(gender ? { gender } : {}), ...(city ? { city } : {}) },
     });
     return data;
+  },
+
+  async getEngagement(days: number): Promise<Engagement> {
+    const { data } = await client.get<Engagement>("/admin/analytics/engagement", { params: { days } });
+    return data;
+  },
+
+  // ---- thoughts
+
+  async getThoughtsConfig(): Promise<ThoughtsConfig> {
+    const { data } = await client.get<ThoughtsConfig>("/thoughts/config");
+    return data;
+  },
+
+  async getThoughts(tab: ThoughtTab, before?: string): Promise<Thought[]> {
+    const { data } = await client.get<Thought[]>("/thoughts", { params: { tab, ...(before ? { before } : {}) } });
+    return data;
+  },
+
+  async getThought(id: string): Promise<Thought> {
+    const { data } = await client.get<Thought>(`/thoughts/${id}`);
+    return data;
+  },
+
+  async createThought(body: string, visibility: ThoughtVisibility): Promise<Thought> {
+    try {
+      const { data } = await client.post<Thought>("/thoughts", { body, visibility });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not share your thought"));
+    }
+  },
+
+  async deleteThought(id: string): Promise<void> {
+    await client.delete(`/thoughts/${id}`);
+  },
+
+  async getThoughtComments(id: string): Promise<ThoughtComment[]> {
+    const { data } = await client.get<ThoughtComment[]>(`/thoughts/${id}/comments`);
+    return data;
+  },
+
+  async addThoughtComment(id: string, body: string, parentId?: string): Promise<ThoughtComment> {
+    try {
+      const { data } = await client.post<ThoughtComment>(`/thoughts/${id}/comments`, { body, parentId: parentId ?? null });
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not post your comment"));
+    }
+  },
+
+  async deleteThoughtComment(commentId: string): Promise<void> {
+    await client.delete(`/thoughts/comments/${commentId}`);
+  },
+
+  async heartThoughtComment(commentId: string, on: boolean): Promise<ThoughtComment> {
+    const { data } = on
+      ? await client.post<ThoughtComment>(`/thoughts/comments/${commentId}/heart`)
+      : await client.delete<ThoughtComment>(`/thoughts/comments/${commentId}/heart`);
+    return data;
+  },
+
+  async heartThought(id: string, on: boolean): Promise<Thought> {
+    const { data } = on ? await client.post<Thought>(`/thoughts/${id}/heart`) : await client.delete<Thought>(`/thoughts/${id}/heart`);
+    return data;
+  },
+
+  async reportThought(id: string, reason: ReportReason, details: string, commentId?: string): Promise<void> {
+    try {
+      await client.post(commentId ? `/thoughts/${id}/comments/${commentId}/report` : `/thoughts/${id}/report`, { reason, details });
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not send your report"));
+    }
+  },
+
+  // ---- admin: thoughts
+
+  async getThoughtSettings(): Promise<ThoughtSettings> {
+    const { data } = await client.get<ThoughtSettings>("/admin/thoughts/settings");
+    return data;
+  },
+
+  async saveThoughtSettings(settings: ThoughtSettings): Promise<ThoughtSettings> {
+    try {
+      const { data } = await client.put<ThoughtSettings>("/admin/thoughts/settings", settings);
+      return data;
+    } catch (err) {
+      throw new Error(errorMessage(err, "Could not save"));
+    }
+  },
+
+  async hideThought(id: string, reason?: string): Promise<void> {
+    await client.post(`/admin/thoughts/${id}/hide`, { reason: reason ?? "" });
+  },
+
+  async hideThoughtComment(id: string, reason?: string): Promise<void> {
+    await client.post(`/admin/thoughts/comments/${id}/hide`, { reason: reason ?? "" });
   },
 
   // ---- admin: payments
